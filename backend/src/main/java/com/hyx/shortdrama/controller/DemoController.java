@@ -27,9 +27,9 @@ public class DemoController {
     @GetMapping("/demo/dramas")
     public BaseResponse<List<Map<String, Object>>> dramas() {
         List<Map<String, Object>> list = Arrays.asList(
-                mapOf(1L, "荒岛求生记", "第一季"),
-                mapOf(2L, "都市奇缘", "第一季"),
-                mapOf(3L, "古城谜案", "第一季")
+                mapOf(1L, "drama-1", "season-1"),
+                mapOf(2L, "drama-2", "season-2"),
+                mapOf(3L, "drama-3", "season-3")
         );
         return ResultUtils.success(list);
     }

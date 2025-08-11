@@ -1,8 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 新增：网络权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="mobile_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"> <!-- 新增：允许 http 明文流量（仅开发） -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
