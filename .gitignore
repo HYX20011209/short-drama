@@ -1,0 +1,14 @@
+# SpecStory plugin files
+.specstory/
+
+# Cursor indexing files  
+.cursorindexingignore
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
