@@ -54,11 +54,15 @@ public class FileController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         validFile(multipartFile, fileUploadBizEnum);
-        User loginUser = userService.getLoginUser(request);
+//        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUserPermitNull(request);
+        long uid = (loginUser != null && loginUser.getId() != null)? loginUser.getId() : 0;
+
         // 文件目录：根据业务、用户来划分
         String uuid = RandomStringUtils.randomAlphanumeric(8);
         String filename = uuid + "-" + multipartFile.getOriginalFilename();
-        String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
+//        String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
+        String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), uid, filename);
         File file = null;
         try {
             // 上传文件
@@ -99,6 +103,12 @@ public class FileController {
             }
             if (!Arrays.asList("jpeg", "jpg", "svg", "png", "webp").contains(fileSuffix)) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件类型错误");
+            }
+        }else if (FileUploadBizEnum.VIDEO.equals(fileUploadBizEnum)) {
+            final long MAX_VIDEO = 500L * ONE_M;
+            if (fileSize > MAX_VIDEO) throw new BusinessException(ErrorCode.PARAMS_ERROR, "视频过大");
+            if (!Arrays.asList("mp4","mov","m3u8").contains(fileSuffix)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "仅支持 mp4/mov/m3u8");
             }
         }
     }
