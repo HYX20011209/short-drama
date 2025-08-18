@@ -28,8 +28,8 @@ public class CodeGenerator {
         // 指定生成参数
         String packageName = "com.hyx.shortdrama";
         String dataName = "用户评论";
-        String dataKey = "userComment";
-        String upperDataKey = "UserComment";
+        String dataKey = "drama";
+        String upperDataKey = "Drama";
 
         // 封装生成参数
         Map<String, Object> dataModel = new HashMap<>();

@@ -1,10 +1,30 @@
 # 数据库初始化
 
 -- 创建库
-create database if not exists my_db;
+create database if not exists short_drama;
 
 -- 切换库
-use my_db;
+use short_drama;
+
+-- 短剧视频表
+create table if not exists video
+(
+    id          bigint auto_increment primary key comment 'id',
+    title       varchar(512)        null comment '标题',
+    description varchar(1024)       null comment '简介',
+    videoUrl    varchar(1024)       not null comment '视频直链/播放地址',
+    coverUrl    varchar(1024)       null comment '封面图',
+    durationSec int                 null comment '时长（秒）',
+    orderNum    int      default 0  not null comment '排序权重（越大越靠前）',
+    status      tinyint  default 1  not null comment '状态：0-下线 1-上线',
+    userId      bigint              not null comment '创建用户 id',
+    createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete    tinyint  default 0  not null comment '是否删除',
+    index idx_status_order (status, orderNum desc, id desc),
+    index idx_userId (userId)
+    ) comment '短剧视频' collate = utf8mb4_unicode_ci;
+
 
 -- 用户表
 create table if not exists user
@@ -21,45 +41,7 @@ create table if not exists user
     createTime   datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint      default 0                 not null comment '是否删除',
-    index idx_unionId (unionId)
-) comment '用户' collate = utf8mb4_unicode_ci;
-
--- 帖子表
-create table if not exists post
-(
-    id         bigint auto_increment comment 'id' primary key,
-    title      varchar(512)                       null comment '标题',
-    content    text                               null comment '内容',
-    tags       varchar(1024)                      null comment '标签列表（json 数组）',
-    thumbNum   int      default 0                 not null comment '点赞数',
-    favourNum  int      default 0                 not null comment '收藏数',
-    userId     bigint                             not null comment '创建用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete   tinyint  default 0                 not null comment '是否删除',
-    index idx_userId (userId)
-) comment '帖子' collate = utf8mb4_unicode_ci;
-
--- 帖子点赞表（硬删除）
-create table if not exists post_thumb
-(
-    id         bigint auto_increment comment 'id' primary key,
-    postId     bigint                             not null comment '帖子 id',
-    userId     bigint                             not null comment '创建用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    index idx_postId (postId),
-    index idx_userId (userId)
-) comment '帖子点赞';
-
--- 帖子收藏表（硬删除）
-create table if not exists post_favour
-(
-    id         bigint auto_increment comment 'id' primary key,
-    postId     bigint                             not null comment '帖子 id',
-    userId     bigint                             not null comment '创建用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    index idx_postId (postId),
-    index idx_userId (userId)
-) comment '帖子收藏';
+    unique index uk_userAccount (userAccount),
+    index idx_unionId (unionId),
+    index idx_mpOpenId (mpOpenId)
+    ) comment '用户' collate = utf8mb4_unicode_ci;

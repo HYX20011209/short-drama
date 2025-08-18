@@ -18,6 +18,11 @@ public class VideoVO implements Serializable {
     private Date createTime;
     private Date updateTime;
 
+    // 新增字段（剧集相关）
+    private Long dramaId;
+    private Integer episodeNumber;
+    private DramaVO drama;  // 所属剧集信息
+
     public static VideoVO objToVo(Video v) {
         if (v == null) return null;
         VideoVO vo = new VideoVO();
