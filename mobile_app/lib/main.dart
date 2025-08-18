@@ -66,6 +66,13 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
   final int _pageSize = 10;
   bool _loading = false;
   bool _hasMore = true;
+  // 播放速度常量
+  static const double _normalSpeed = 1.0;
+  static const double _fastSpeed = 3.0;
+
+  // 每个视频期望的速度（默认 1.0），以及当前长按的视频 id
+  final Map<int, double> _desiredSpeed = {};
+  int? _longPressVideoId;
 
   @override
   void initState() {
@@ -92,6 +99,32 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
       _userPausedVideos.remove(key);
     }
     setState(() {}); // 刷新UI
+  }
+
+  void _applyDesiredSpeed(int videoId) {
+    final c = _controllers[videoId];
+    if (c != null && c.value.isInitialized) {
+      final s = _desiredSpeed[videoId] ?? _normalSpeed;
+      c.setPlaybackSpeed(s);
+    }
+  }
+
+  // 长按开始：当前视频切 2 倍速
+  void _onLongPressStart(int index) {
+    if (index != _currentIndex || index < 0 || index >= _items.length) return;
+    final id = _items[index].id;
+    _desiredSpeed[id] = _fastSpeed;
+    _applyDesiredSpeed(id);
+    _longPressVideoId = id;
+  }
+
+  // 长按结束：恢复 1 倍速
+  void _onLongPressEnd(int index) {
+    if (index < 0 || index >= _items.length) return;
+    final id = _items[index].id;
+    _desiredSpeed[id] = _normalSpeed;
+    _applyDesiredSpeed(id);
+    if (_longPressVideoId == id) _longPressVideoId = null;
   }
 
   Future<void> _loadMore() async {
@@ -129,9 +162,11 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
     if (index < 0 || index >= _items.length) return;
     final key = _items[index].id;
     if (_controllers.containsKey(key)) return;
+
     final c = VideoPlayerController.networkUrl(Uri.parse(_items[index].url));
     c.initialize().then((_) {
       c.setLooping(true);
+      _applyDesiredSpeed(key); // 初始化完成后设置速度
       setState(() {});
     });
     _controllers[key] = c;
@@ -155,6 +190,7 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
         if (_currentIndex < _items.length &&
             _items[_currentIndex].id == videoId &&
             !_userPausedVideos.contains(videoId)) {
+          _applyDesiredSpeed(videoId);
           c.play();
           // 确保UI更新
           setState(() {});
@@ -169,6 +205,14 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
   void _playAt(int index) {
     if (index < 0 || index >= _items.length) return;
 
+    // 若存在长按中的视频，切页时视为结束：恢复 1 倍速
+    if (_longPressVideoId != null) {
+      final lp = _longPressVideoId!;
+      _desiredSpeed[lp] = _normalSpeed;
+      _applyDesiredSpeed(lp);
+      _longPressVideoId = null;
+    }
+
     // 暂停上一条
     if (_currentIndex != index && _currentIndex < _items.length) {
       final prevKey = _items[_currentIndex].id;
@@ -178,17 +222,14 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
     _currentIndex = index;
     final key = _items[index].id;
 
-    // 切换到新视频时，清除暂停状态（自动播放）
+    // 切换到新视频时，清除用户暂停状态（自动播放）
     bool wasUserPaused = _userPausedVideos.contains(key);
     _userPausedVideos.remove(key);
-
-    // 如果之前是用户暂停的，需要更新UI
-    if (wasUserPaused) {
-      setState(() {});
-    }
+    if (wasUserPaused) setState(() {});
 
     final c = _controllers[key];
     if (c != null && c.value.isInitialized) {
+      _applyDesiredSpeed(key); // 应用期望速度
       c.play();
     } else {
       _preload(index);
@@ -231,6 +272,8 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => _togglePlay(index),
+            onLongPressStart: (_) => _onLongPressStart(index),
+            onLongPressEnd: (_) => _onLongPressEnd(index),
             child: Stack(
               fit: StackFit.expand,
               children: [
