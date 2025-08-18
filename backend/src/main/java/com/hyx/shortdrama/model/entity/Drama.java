@@ -6,28 +6,22 @@ import lombok.Data;
 import java.io.Serializable;
 import java.util.Date;
 
-@TableName(value = "video")
+@TableName(value = "drama")
 @Data
-public class Video implements Serializable {
+public class Drama implements Serializable {
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     private String title;
     private String description;
-
-    private String videoUrl;
     private String coverUrl;
-
-    private Integer durationSec;
-    private Integer orderNum;
+    private String category;
+    private Integer totalEpisodes;
     private Integer status; // 0-下线 1-上线
+    private Integer orderNum;
 
     private Long userId;
-    
-    // 新增字段：剧集相关（可为空，保持向后兼容）
-    private Long dramaId;       // 所属剧集id
-    private Integer episodeNumber; // 集数（第几集）
 
     private Date createTime;
     private Date updateTime;
