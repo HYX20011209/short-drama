@@ -109,7 +109,7 @@ class _VerticalFeedPageState extends State<VerticalFeedPage> {
     }
   }
 
-  // 长按开始：当前视频切 2 倍速
+  // 长按开始：当前视频切倍速
   void _onLongPressStart(int index) {
     if (index != _currentIndex || index < 0 || index >= _items.length) return;
     final id = _items[index].id;
