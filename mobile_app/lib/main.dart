@@ -1,118 +1,182 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:video_player/video_player.dart';
+
+// 根据运行环境修改为你的后端地址：模拟器可用 http://127.0.0.1:8101
+// 真机需改为你电脑的局域网 IP，例如 http://192.168.1.10:8101
+const String kApiBase = 'http://127.0.0.1:8101/api';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MaterialApp(
+    debugShowCheckedModeBanner: false,
+    home: VerticalFeedPage(),
+  ));
 }
 
-String baseApi() {
-  // Android 模拟器访问宿主机需用 10.0.2.2；iOS 模拟器 / 桌面可用 127.0.0.1
-  final host = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
-  return 'http://$host:8101/api';
-}
-
-Future<String> ping() async {
-  final resp = await http.get(Uri.parse('${baseApi()}/ping'));
-  if (resp.statusCode != 200) throw Exception('HTTP ${resp.statusCode}');
-  final json = jsonDecode(resp.body);
-  if (json is Map && json['code'] == 0) {
-    return json['data']['message'] ?? 'pong';
+class VideoItem {
+  final int id;
+  final String url;
+  final String? title;
+  final String? cover;
+  final int? duration;
+  VideoItem({required this.id, required this.url, this.title, this.cover, this.duration});
+  // factory VideoItem.fromJson(Map<String, dynamic> j) =>
+  //     VideoItem(id: j['id'], url: j['videoUrl'], title: j['title'], cover: j['coverUrl'], duration: j['durationSec']);
+  factory VideoItem.fromJson(Map<String, dynamic> j) {
+  int? parseIntOrNull(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    final s = v.toString();
+    return s.isEmpty ? null : int.tryParse(s);
   }
-  throw Exception('接口异常: $json');
+  return VideoItem(
+    id: parseIntOrNull(j['id']) ?? 0,
+    url: j['videoUrl'] ?? '',
+    title: j['title'],
+    cover: j['coverUrl'],
+    duration: parseIntOrNull(j['durationSec']),
+  );
+}
 }
 
-Future<List<dynamic>> fetchDramas() async {
-  final resp = await http.get(Uri.parse('${baseApi()}/demo/dramas'));
-  if (resp.statusCode != 200) throw Exception('HTTP ${resp.statusCode}');
-  final json = jsonDecode(resp.body);
-  if (json is Map && json['code'] == 0) {
-    return json['data'] as List<dynamic>;
-  }
-  throw Exception('接口异常: $json');
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class VerticalFeedPage extends StatefulWidget {
+  const VerticalFeedPage({super.key});
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(title: 'Short Drama', home: const DemoPage());
-  }
+  State<VerticalFeedPage> createState() => _VerticalFeedPageState();
 }
 
-class DemoPage extends StatefulWidget {
-  const DemoPage({super.key});
-  @override
-  State<DemoPage> createState() => _DemoPageState();
-}
-
-class _DemoPageState extends State<DemoPage> {
-  late Future<String> _pong;
-  late Future<List<dynamic>> _dramas;
+class _VerticalFeedPageState extends State<VerticalFeedPage> {
+  final PageController _pageController = PageController();
+  final List<VideoItem> _items = [];
+  final Map<int, VideoPlayerController> _controllers = {};
+  int _currentIndex = 0;
+  int _currentPage = 1;
+  final int _pageSize = 10;
+  bool _loading = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
-    _pong = ping();
-    _dramas = fetchDramas();
+    _loadMore().then((_) => _playAt(0));
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || !_hasMore) return;
+    _loading = true;
+    try {
+      final uri = Uri.parse('$kApiBase/video/feed?current=$_currentPage&pageSize=$_pageSize');
+      final res = await http.get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final page = data['data'];
+        final List list = page['records'] ?? [];
+        final items = list.map((e) => VideoItem.fromJson(e)).cast<VideoItem>().toList();
+        setState(() {
+          _items.addAll(items);
+          _currentPage++;
+          _hasMore = items.length >= _pageSize;
+        });
+        _preload(_currentIndex);
+        _preload(_currentIndex + 1);
+      } else {
+        debugPrint('feed error: ${res.statusCode} ${res.body}');
+      }
+    } finally {
+      _loading = false;
+    }
+  }
+
+  void _preload(int index) {
+    if (index < 0 || index >= _items.length) return;
+    final key = _items[index].id;
+    if (_controllers.containsKey(key)) return;
+    final c = VideoPlayerController.networkUrl(Uri.parse(_items[index].url));
+    c.initialize().then((_) {
+      c.setLooping(true);
+      setState(() {});
+    });
+    _controllers[key] = c;
+  }
+
+  void _disposeAt(int index) {
+    if (index < 0 || index >= _items.length) return;
+    final key = _items[index].id;
+    _controllers.remove(key)?.dispose();
+  }
+
+  void _playAt(int index) {
+    if (index < 0 || index >= _items.length) return;
+    if (_currentIndex != index && _currentIndex < _items.length) {
+      final prevKey = _items[_currentIndex].id;
+      _controllers[prevKey]?.pause();
+    }
+    _currentIndex = index;
+    final key = _items[index].id;
+    final c = _controllers[key];
+    if (c != null && c.value.isInitialized) {
+      c.play();
+    } else {
+      _preload(index);
+      _controllers[key]?.addListener(() {
+        final vc = _controllers[key];
+        if (vc != null && vc.value.isInitialized && !vc.value.isPlaying) {
+          vc.play();
+        }
+      });
+    }
+    _preload(index + 1);
+    _disposeAt(index - 2);
+    if (index >= _items.length - 3) _loadMore();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('短剧列表')),
-      body: Column(
-        children: [
-          FutureBuilder<String>(
-            future: _pong,
-            builder: (context, snap) {
-              if (snap.connectionState != ConnectionState.done) {
-                return const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('正在 Ping 后端...'),
-                );
-              }
-              if (snap.hasError) {
-                return Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text('Ping 失败: ${snap.error}'),
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('后端连通：${snap.data}'),
-              );
-            },
-          ),
-          Expanded(
-            child: FutureBuilder<List<dynamic>>(
-              future: _dramas,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snap.hasError) {
-                  return Center(child: Text('加载失败: ${snap.error}'));
-                }
-                final list = snap.data ?? [];
-                if (list.isEmpty) return const Center(child: Text('暂无短剧'));
-                return ListView.separated(
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, i) {
-                    final m = list[i] as Map<String, dynamic>;
-                    return ListTile(
-                      title: Text(m['title']?.toString() ?? ''),
-                      subtitle: Text(m['season']?.toString() ?? ''),
-                      trailing: Text('#${m['id']}'),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+      backgroundColor: Colors.black,
+      body: PageView.builder(
+        controller: _pageController,
+        scrollDirection: Axis.vertical,
+        onPageChanged: (i) => _playAt(i),
+        itemCount: _items.length == 0 ? 1 : _items.length,
+        itemBuilder: (context, index) {
+          if (_items.isEmpty) {
+            return const Center(child: CircularProgressIndicator(color: Colors.white));
+          }
+          final item = _items[index];
+          final c = _controllers[item.id];
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              if (c != null && c.value.isInitialized)
+                FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: c.value.size.width,
+                    height: c.value.size.height,
+                    child: VideoPlayer(c),
+                  ),
+                )
+              else
+                const Center(child: CircularProgressIndicator(color: Colors.white)),
+              Positioned(
+                left: 16, bottom: 40, right: 16,
+                child: Text(item.title ?? '', style: const TextStyle(color: Colors.white, fontSize: 16)),
+              )
+            ],
+          );
+        },
       ),
     );
   }
