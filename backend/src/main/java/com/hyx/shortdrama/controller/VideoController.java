@@ -62,12 +62,21 @@ public class VideoController {
     @GetMapping("/feed")
     public BaseResponse<Page<VideoVO>> feed(@RequestParam(defaultValue = "1") long current,
                                             @RequestParam(defaultValue = "10") long pageSize,
+                                            @RequestParam(required = false) Long dramaId,
                                             HttpServletRequest request) {
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR);
         QueryWrapper<Video> qw = new QueryWrapper<Video>()
-                .eq("status", 1)
-                .orderByDesc("orderNum")
-                .orderByDesc("id");
+                .eq("status", 1);
+
+        if (dramaId != null) {
+            qw.eq("dramaId", dramaId)
+                    .orderByAsc("episodeNumber")
+                    .orderByAsc("id");
+        } else {
+            qw.orderByDesc("orderNum")
+                    .orderByDesc("id");
+        }
+
         Page<Video> page = videoService.page(new Page<>(current, pageSize), qw);
         return ResultUtils.success(videoService.getVideoVOPage(page, request));
     }

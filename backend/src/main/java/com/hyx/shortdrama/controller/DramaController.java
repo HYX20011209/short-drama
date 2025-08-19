@@ -1,5 +1,6 @@
 package com.hyx.shortdrama.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hyx.shortdrama.annotation.AuthCheck;
 import com.hyx.shortdrama.common.BaseResponse;
@@ -15,15 +16,20 @@ import com.hyx.shortdrama.model.dto.drama.DramaQueryRequest;
 import com.hyx.shortdrama.model.dto.drama.DramaUpdateRequest;
 import com.hyx.shortdrama.model.entity.Drama;
 import com.hyx.shortdrama.model.entity.User;
+import com.hyx.shortdrama.model.entity.Video;
 import com.hyx.shortdrama.model.vo.DramaVO;
+import com.hyx.shortdrama.model.vo.VideoVO;
 import com.hyx.shortdrama.service.DramaService;
 import com.hyx.shortdrama.service.UserService;
+import com.hyx.shortdrama.service.VideoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户评论接口
@@ -41,7 +47,53 @@ public class DramaController {
     @Resource
     private UserService userService;
 
-    // region 增删改查
+    @Resource
+    private VideoService videoService;
+
+    private static final Integer PAGE_SIZE_LIMIT = 20;
+
+    @GetMapping("/list")
+    public BaseResponse<Page<DramaVO>> listPublic(@RequestParam(defaultValue = "1") long current,
+                                                  @RequestParam(defaultValue = "10") long pageSize,
+                                                  @RequestParam(required = false) String category,
+                                                  HttpServletRequest request) {
+        ThrowUtils.throwIf(pageSize > PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
+        QueryWrapper<Drama> qw = new QueryWrapper<Drama>()
+                .eq("status", 1);
+        if (category != null && !category.isEmpty()) {
+            qw.eq("category", category);
+        }
+        qw.orderByDesc("orderNum").orderByDesc("id");
+        Page<Drama> page = dramaService.page(new Page<>(current, pageSize), qw);
+        return ResultUtils.success(dramaService.getDramaVOPage(page, request));
+    }
+
+    @GetMapping("/{id}")
+    public BaseResponse<DramaVO> getByPath(@PathVariable("id") long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        Drama drama = dramaService.getById(id);
+        ThrowUtils.throwIf(drama == null, ErrorCode.NOT_FOUND_ERROR);
+        return ResultUtils.success(dramaService.getDramaVO(drama, request));
+    }
+
+    @GetMapping("/{id}/episodes")
+    public BaseResponse<List<VideoVO>> listEpisodes(@PathVariable("id") long id,
+                                                              HttpServletRequest request) {
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        QueryWrapper<Video> qw = new QueryWrapper<Video>()
+                                .eq("status", 1)
+                                .eq("dramaId", id)
+                                .orderByAsc("episodeNumber")
+                                .orderByAsc("id");
+        List<Video> list = videoService.list(qw);
+        List<VideoVO> voList = list.stream()
+                .map(v -> videoService.getVideoVO(v, request))
+                .collect(Collectors.toList());
+        return ResultUtils.success(voList);
+    }
+
+
+    // region 增删改查（自动生成）
 
     /**
      * 创建
