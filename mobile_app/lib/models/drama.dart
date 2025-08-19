@@ -24,20 +24,31 @@ class Drama {
   });
 
   factory Drama.fromJson(Map<String, dynamic> json) {
+    // 安全的整数解析函数
+    int? parseIntOrNull(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is String) {
+        if (value.isEmpty) return null;
+        return int.tryParse(value);
+      }
+      return null;
+    }
+
     return Drama(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? '',
-      description: json['description'],
-      coverUrl: json['coverUrl'],
-      category: json['category'],
-      totalEpisodes: json['totalEpisodes'] ?? 0,
-      status: json['status'] ?? 1,
-      orderNum: json['orderNum'] ?? 0,
+      id: parseIntOrNull(json['id']) ?? 0,
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString(),
+      coverUrl: json['coverUrl']?.toString(),
+      category: json['category']?.toString(),
+      totalEpisodes: parseIntOrNull(json['totalEpisodes']) ?? 0,
+      status: parseIntOrNull(json['status']) ?? 1,
+      orderNum: parseIntOrNull(json['orderNum']) ?? 0,
       createTime: DateTime.parse(
-        json['createTime'] ?? DateTime.now().toIso8601String(),
+        json['createTime']?.toString() ?? DateTime.now().toIso8601String(),
       ),
       updateTime: DateTime.parse(
-        json['updateTime'] ?? DateTime.now().toIso8601String(),
+        json['updateTime']?.toString() ?? DateTime.now().toIso8601String(),
       ),
     );
   }

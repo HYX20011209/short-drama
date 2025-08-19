@@ -5,6 +5,7 @@ import '../../widgets/drama_card.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
 import '../player/video_player_page.dart';
+import '../drama_detail/drama_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -27,10 +28,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadInitialData() async {
-    await Future.wait([
-      _loadCategories(),
-      _loadDramas(),
-    ]);
+    await Future.wait([_loadCategories(), _loadDramas()]);
   }
 
   Future<void> _loadCategories() async {
@@ -78,12 +76,7 @@ class _HomePageState extends State<HomePage> {
   void _playDrama(Drama drama) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => VideoPlayerPage(
-          dramaId: drama.id,
-          startEpisode: 1,
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => DramaDetailPage(drama: drama)),
     );
   }
 
@@ -99,9 +92,9 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.search),
             onPressed: () {
               // TODO: 实现搜索功能
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('搜索功能开发中...')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('搜索功能开发中...')));
             },
           ),
         ],
@@ -119,24 +112,34 @@ class _HomePageState extends State<HomePage> {
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  final isSelected = selectedCategory == category || 
+                  final isSelected =
+                      selectedCategory == category ||
                       (selectedCategory == null && category == '全部');
-                  
+
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: GestureDetector(
-                      onTap: () => _onCategoryChanged(category == '全部' ? null : category),
+                      onTap: () => _onCategoryChanged(
+                        category == '全部' ? null : category,
+                      ),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? Theme.of(context).primaryColor : Colors.grey[200],
+                          color: isSelected
+                              ? Theme.of(context).primaryColor
+                              : Colors.grey[200],
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           category,
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black87,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -147,9 +150,7 @@ class _HomePageState extends State<HomePage> {
             ),
 
           // 主要内容区域
-          Expanded(
-            child: _buildContent(),
-          ),
+          Expanded(child: _buildContent()),
         ],
       ),
     );
@@ -161,18 +162,12 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (errorMessage != null) {
-      return CustomErrorWidget(
-        message: errorMessage!,
-        onRetry: _loadDramas,
-      );
+      return CustomErrorWidget(message: errorMessage!, onRetry: _loadDramas);
     }
 
     if (dramas.isEmpty) {
       return const Center(
-        child: Text(
-          '暂无剧集',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+        child: Text('暂无剧集', style: TextStyle(fontSize: 16, color: Colors.grey)),
       );
     }
 
