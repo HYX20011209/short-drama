@@ -47,17 +47,27 @@ public class VideoServiceImpl extends ServiceImpl<VideoMapper, Video> implements
         String title = request.getTitle();
         Integer status = request.getStatus();
         Long userId = request.getUserId();
+        Long dramaId = request.getDramaId();
+        Integer episodeNumber = request.getEpisodeNumber();
 
         qw.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         qw.eq(ObjectUtils.isNotEmpty(id), "id", id);
         qw.eq(ObjectUtils.isNotEmpty(status), "status", status);
         qw.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
+        qw.eq(ObjectUtils.isNotEmpty(dramaId), "dramaId", dramaId);
         qw.like(StringUtils.isNotBlank(title), "title", title);
 
         String sortField = request.getSortField();
         String sortOrder = request.getSortOrder();
-        qw.orderBy(SqlUtils.validSortField(sortField),
-                CommonConstant.SORT_ORDER_ASC.equals(sortOrder), sortField);
+
+        // 默认按 orderNum desc, id desc；如果指定了剧集，推荐按 episodeNumber 正序、id 正序
+        if (ObjectUtils.isNotEmpty(dramaId)) {
+            qw.orderByAsc("episodeNumber").orderByAsc("id");
+        } else if (SqlUtils.validSortField(sortField)) {
+            qw.orderBy(true, CommonConstant.SORT_ORDER_ASC.equals(sortOrder), sortField);
+        } else {
+            qw.orderByDesc("orderNum").orderByDesc("id");
+        }
         return qw;
     }
 

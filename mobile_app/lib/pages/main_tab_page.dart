@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home/home_page.dart';
 import 'player/video_player_page.dart';
 import 'profile/profile_page.dart';
+import 'recommend/recommend_page.dart';
 
 class MainTabPage extends StatefulWidget {
   const MainTabPage({Key? key}) : super(key: key);
@@ -12,16 +13,16 @@ class MainTabPage extends StatefulWidget {
 
 class _MainTabPageState extends State<MainTabPage> {
   int _currentIndex = 0;
-  
+
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    _pages = [
-      const HomePage(),
-      const VideoPlayerPage(),
-      const ProfilePage(),
+    _pages = const [
+      HomePage(),
+      RecommendPage(),
+      ProfilePage(),
     ];
   }
 
@@ -45,7 +46,7 @@ class _MainTabPageState extends State<MainTabPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.play_circle_filled),
-            label: '播放',
+            label: '发现',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
