@@ -1,10 +1,87 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../models/drama.dart';
 import '../models/user.dart';
 import '../models/watch_history.dart';
-import '../models/drama.dart';
-import '../utils/network_helper.dart';
 import '../utils/constants.dart';
+import '../utils/network_helper.dart';
 
 class UserService {
+  /// 用户登录
+  static Future<User?> login(String userAccount, String password) async {
+    try {
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userLogin}');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userAccount': userAccount,
+          'userPassword': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 0 && data['data'] != null) {
+          return User.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      throw Exception('网络请求失败: $e');
+    }
+  }
+
+  /// 用户注册
+  static Future<bool> register(
+    String userAccount,
+    String password,
+    String checkPassword,
+  ) async {
+    try {
+      final url = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.userRegister}',
+      );
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userAccount': userAccount,
+          'userPassword': password,
+          'checkPassword': checkPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['code'] == 0;
+      }
+      return false;
+    } catch (e) {
+      throw Exception('网络请求失败: $e');
+    }
+  }
+
+  /// 获取当前用户信息
+  static Future<User?> getCurrentUser() async {
+    try {
+      final url = Uri.parse('${ApiConstants.baseUrl}/user/get/login');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 0 && data['data'] != null) {
+          return User.fromJson(data['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      throw Exception('获取用户信息失败: $e');
+    }
+  }
+
   /// 获取观看历史
   static Future<List<WatchHistory>> getWatchHistory({
     int current = 1,
@@ -60,10 +137,7 @@ class UserService {
   /// 切换收藏状态
   static Future<bool> toggleFavorite(int dramaId) async {
     try {
-      final response = await NetworkHelper.post(
-        '/user/favorite/$dramaId',
-        {},
-      );
+      final response = await NetworkHelper.post('/user/favorite/$dramaId', {});
       return response != null;
     } catch (e) {
       print('切换收藏状态失败: $e');
@@ -79,15 +153,12 @@ class UserService {
     required int progress,
   }) async {
     try {
-      final response = await NetworkHelper.post(
-        '/user/progress',
-        {
-          'videoId': videoId,
-          if (dramaId != null) 'dramaId': dramaId,
-          if (episodeNumber != null) 'episodeNumber': episodeNumber,
-          'progress': progress,
-        },
-      );
+      final response = await NetworkHelper.post('/user/progress', {
+        'videoId': videoId,
+        if (dramaId != null) 'dramaId': dramaId,
+        if (episodeNumber != null) 'episodeNumber': episodeNumber,
+        'progress': progress,
+      });
       return response != null;
     } catch (e) {
       print('更新观看进度失败: $e');
