@@ -10,15 +10,13 @@ import com.hyx.shortdrama.config.WxOpenConfig;
 import com.hyx.shortdrama.constant.UserConstant;
 import com.hyx.shortdrama.exception.BusinessException;
 import com.hyx.shortdrama.exception.ThrowUtils;
-import com.hyx.shortdrama.model.dto.user.UserAddRequest;
-import com.hyx.shortdrama.model.dto.user.UserLoginRequest;
-import com.hyx.shortdrama.model.dto.user.UserQueryRequest;
-import com.hyx.shortdrama.model.dto.user.UserRegisterRequest;
-import com.hyx.shortdrama.model.dto.user.UserUpdateMyRequest;
-import com.hyx.shortdrama.model.dto.user.UserUpdateRequest;
+import com.hyx.shortdrama.model.dto.user.*;
 import com.hyx.shortdrama.model.entity.User;
+import com.hyx.shortdrama.model.vo.DramaVO;
 import com.hyx.shortdrama.model.vo.LoginUserVO;
 import com.hyx.shortdrama.model.vo.UserVO;
+import com.hyx.shortdrama.model.vo.WatchHistoryVO;
+import com.hyx.shortdrama.service.UserDramaFavoriteService;
 import com.hyx.shortdrama.service.UserService;
 
 import java.util.List;
@@ -26,6 +24,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.hyx.shortdrama.service.WatchHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 import me.chanjar.weixin.common.bean.oauth2.WxOAuth2AccessToken;
@@ -33,12 +32,7 @@ import me.chanjar.weixin.mp.api.WxMpService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import static com.hyx.shortdrama.service.impl.UserServiceImpl.SALT;
 
@@ -55,6 +49,12 @@ public class UserController {
 
     @Resource
     private WxOpenConfig wxOpenConfig;
+
+    @Resource
+    private WatchHistoryService watchHistoryService;
+
+    @Resource
+    private UserDramaFavoriteService userDramaFavoriteService;
 
     // region 登录相关
 
@@ -318,5 +318,186 @@ public class UserController {
     @GetMapping("/test")
     public BaseResponse<Integer>  test() {
         return ResultUtils.success(1);
+    }
+
+    // ==================== 观看历史相关接口 ====================
+
+    /**
+     * 获取用户观看历史
+     *
+     * @param pageNum  页码
+     * @param pageSize 页大小
+     * @param request  请求
+     * @return 观看历史列表
+     */
+    @GetMapping("/history")
+    public BaseResponse<Page<WatchHistoryVO>> getUserWatchHistory(
+            @RequestParam(defaultValue = "1") long pageNum,
+            @RequestParam(defaultValue = "10") long pageSize,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        Page<WatchHistoryVO> historyPage = watchHistoryService.getUserWatchHistory(loginUser.getId(), pageNum, pageSize);
+        return ResultUtils.success(historyPage);
+    }
+
+    /**
+     * 更新观看进度
+     *
+     * @param updateProgressRequest 更新进度请求
+     * @param request              请求
+     * @return 是否成功
+     */
+    @PostMapping("/history/progress")
+    public BaseResponse<Boolean> updateWatchProgress(@RequestBody UpdateProgressRequest updateProgressRequest,
+                                                     HttpServletRequest request) {
+        if (updateProgressRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+
+        boolean success = watchHistoryService.saveOrUpdateProgress(
+                loginUser.getId(),
+                updateProgressRequest.getVideoId(),
+                updateProgressRequest.getDramaId(),
+                updateProgressRequest.getEpisodeNumber(),
+                updateProgressRequest.getProgress()
+        );
+
+        return ResultUtils.success(success);
+    }
+
+    /**
+     * 删除观看历史记录
+     *
+     * @param videoId 视频ID
+     * @param request 请求
+     * @return 是否成功
+     */
+    @DeleteMapping("/history/{videoId}")
+    public BaseResponse<Boolean> deleteWatchHistory(@PathVariable Long videoId, HttpServletRequest request) {
+        if (videoId == null || videoId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean success = watchHistoryService.deleteWatchHistory(loginUser.getId(), videoId);
+        return ResultUtils.success(success);
+    }
+
+    /**
+     * 清空观看历史
+     *
+     * @param request 请求
+     * @return 是否成功
+     */
+    @DeleteMapping("/history/clear")
+    public BaseResponse<Boolean> clearWatchHistory(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        boolean success = watchHistoryService.clearWatchHistory(loginUser.getId());
+        return ResultUtils.success(success);
+    }
+
+    /**
+     * 获取视频观看进度
+     *
+     * @param videoId 视频ID
+     * @param request 请求
+     * @return 观看进度
+     */
+    @GetMapping("/history/progress/{videoId}")
+    public BaseResponse<Integer> getWatchProgress(@PathVariable Long videoId, HttpServletRequest request) {
+        if (videoId == null || videoId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        Integer progress = watchHistoryService.getWatchProgress(loginUser.getId(), videoId);
+        return ResultUtils.success(progress);
+    }
+
+    // ==================== 收藏相关接口 ====================
+
+    /**
+     * 获取用户收藏列表
+     *
+     * @param pageNum  页码
+     * @param pageSize 页大小
+     * @param request  请求
+     * @return 收藏列表
+     */
+    @GetMapping("/favorites")
+    public BaseResponse<Page<DramaVO>> getUserFavorites(
+            @RequestParam(defaultValue = "1") long pageNum,
+            @RequestParam(defaultValue = "10") long pageSize,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        Page<DramaVO> favoritePage = userDramaFavoriteService.getUserFavorites(loginUser.getId(), pageNum, pageSize);
+        return ResultUtils.success(favoritePage);
+    }
+
+    /**
+     * 添加收藏
+     *
+     * @param dramaId 剧集ID
+     * @param request 请求
+     * @return 是否成功
+     */
+    @PostMapping("/favorites/{dramaId}")
+    public BaseResponse<Boolean> addFavorite(@PathVariable Long dramaId, HttpServletRequest request) {
+        if (dramaId == null || dramaId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean success = userDramaFavoriteService.addFavorite(loginUser.getId(), dramaId);
+        return ResultUtils.success(success);
+    }
+
+    /**
+     * 取消收藏
+     *
+     * @param dramaId 剧集ID
+     * @param request 请求
+     * @return 是否成功
+     */
+    @DeleteMapping("/favorites/{dramaId}")
+    public BaseResponse<Boolean> removeFavorite(@PathVariable Long dramaId, HttpServletRequest request) {
+        if (dramaId == null || dramaId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean success = userDramaFavoriteService.removeFavorite(loginUser.getId(), dramaId);
+        return ResultUtils.success(success);
+    }
+
+    /**
+     * 切换收藏状态
+     *
+     * @param dramaId 剧集ID
+     * @param request 请求
+     * @return 切换后的收藏状态
+     */
+    @PostMapping("/favorites/toggle/{dramaId}")
+    public BaseResponse<Boolean> toggleFavorite(@PathVariable Long dramaId, HttpServletRequest request) {
+        if (dramaId == null || dramaId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean isFavorited = userDramaFavoriteService.toggleFavorite(loginUser.getId(), dramaId);
+        return ResultUtils.success(isFavorited);
+    }
+
+    /**
+     * 检查是否已收藏
+     *
+     * @param dramaId 剧集ID
+     * @param request 请求
+     * @return 是否已收藏
+     */
+    @GetMapping("/favorites/check/{dramaId}")
+    public BaseResponse<Boolean> checkFavorite(@PathVariable Long dramaId, HttpServletRequest request) {
+        if (dramaId == null || dramaId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean isFavorited = userDramaFavoriteService.isFavorited(loginUser.getId(), dramaId);
+        return ResultUtils.success(isFavorited);
     }
 }
