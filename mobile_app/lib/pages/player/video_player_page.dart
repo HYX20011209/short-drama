@@ -1,20 +1,20 @@
-import 'dart:convert';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+
 import '../../models/enhanced_video.dart';
+import '../../providers/app_state.dart';
 import '../../services/video_service.dart';
-import '../../utils/constants.dart';
+import '../../services/watch_history_service.dart';
 
 class VideoPlayerPage extends StatefulWidget {
-  final int? dramaId;      // 可选的剧集ID
+  final int? dramaId; // 可选的剧集ID
   final int? startEpisode; // 起始集数
-  
-  const VideoPlayerPage({
-    Key? key,
-    this.dramaId,
-    this.startEpisode,
-  }) : super(key: key);
+
+  const VideoPlayerPage({Key? key, this.dramaId, this.startEpisode})
+    : super(key: key);
 
   @override
   State<VideoPlayerPage> createState() => _VideoPlayerPageState();
@@ -30,38 +30,45 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   final int _pageSize = 10;
   bool _loading = false;
   bool _hasMore = true;
-  
+
   // 播放速度常量
   static const double _normalSpeed = 1.0;
   static const double _fastSpeed = 3.0;
-  
+
   // 每个视频期望的速度（默认 1.0），以及当前长按的视频 id
   final Map<int, double> _desiredSpeed = {};
   int? _longPressVideoId;
+
+  // 观看进度相关
+  Timer? _progressTimer;
+  final Map<int, int> _lastSavedProgress = {}; // 记录每个视频上次保存的进度
+  static const int _progressSaveInterval = 5; // 每5秒保存一次进度
+  static const int _minProgressDiff = 3; // 进度变化超过3秒才保存
 
   @override
   void initState() {
     super.initState();
     _loadMore().then((_) => _playAt(0));
+    _startProgressTimer(); // 启动进度保存定时器
   }
 
   Future<void> _loadMore() async {
     if (_loading || !_hasMore) return;
     _loading = true;
-    
+
     try {
       final items = await VideoService.getVideoFeed(
         current: _currentPage,
         pageSize: _pageSize,
         dramaId: widget.dramaId,
       );
-      
+
       setState(() {
         _items.addAll(items);
         _currentPage++;
         _hasMore = items.length >= _pageSize;
       });
-      
+
       _preload(_currentIndex);
       _preload(_currentIndex + 1);
     } catch (e) {
@@ -165,6 +172,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   void _playAt(int index) {
     if (index < 0 || index >= _items.length) return;
 
+    // 保存上一个视频的进度
+    _onVideoChanged(index);
+
     // 若存在长按中的视频，切页时视为结束：恢复 1 倍速
     if (_longPressVideoId != null) {
       final lp = _longPressVideoId!;
@@ -190,7 +200,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     final c = _controllers[key];
     if (c != null && c.value.isInitialized) {
       _applyDesiredSpeed(key); // 应用期望速度
-      c.play();
+
+      // 尝试从上次观看位置开始播放
+      _resumeFromLastPosition(item: _items[index], controller: c);
     } else {
       _preload(index);
       _waitForInitAndPlay(key);
@@ -203,6 +215,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   @override
   void dispose() {
+    _progressTimer?.cancel(); // 取消定时器
+    _saveCurrentProgress(); // 保存当前进度
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -270,7 +284,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                       right: 16,
                       child: Text(
                         item.title ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -278,7 +295,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               );
             },
           ),
-          
+
           // 返回按钮（仅在从剧集进入时显示）
           if (widget.dramaId != null)
             Positioned(
@@ -290,7 +307,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -298,5 +319,155 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         ],
       ),
     );
+  }
+
+  /// 启动观看进度保存定时器
+  void _startProgressTimer() {
+    _progressTimer = Timer.periodic(
+      Duration(seconds: _progressSaveInterval),
+      (timer) => _saveCurrentProgress(),
+    );
+  }
+
+  /// 保存当前播放进度
+  Future<void> _saveCurrentProgress() async {
+    if (!mounted || _items.isEmpty || _currentIndex >= _items.length) return;
+
+    final appState = context.read<AppState>();
+    if (!appState.isLoggedIn) return; // 未登录不保存
+
+    final currentItem = _items[_currentIndex];
+    final controller = _controllers[currentItem.id];
+
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final currentPosition = controller.value.position.inSeconds;
+    final duration = controller.value.duration.inSeconds;
+
+    // 检查是否需要保存（进度变化足够大，且不是刚开始或快结束）
+    if (_shouldSaveProgress(currentItem.id, currentPosition, duration)) {
+      await _saveProgress(currentItem, currentPosition);
+      _lastSavedProgress[currentItem.id] = currentPosition;
+    }
+  }
+
+  /// 判断是否应该保存进度
+  bool _shouldSaveProgress(int videoId, int currentPosition, int duration) {
+    // 视频太短不保存
+    if (duration < 10) return false;
+
+    // 刚开始的3秒和最后10秒不保存
+    if (currentPosition < 3 || currentPosition > duration - 10) return false;
+
+    // 检查进度变化是否足够大
+    final lastSaved = _lastSavedProgress[videoId] ?? 0;
+    return (currentPosition - lastSaved).abs() >= _minProgressDiff;
+  }
+
+  /// 保存观看进度到服务器
+  Future<void> _saveProgress(VideoItem item, int progress) async {
+    try {
+      final dramaIdStr = widget.dramaId?.toString();
+      final episodeNumber = _getEpisodeNumber(item);
+
+      final success = await WatchHistoryService.updateWatchProgress(
+        videoId: item.id.toString(),
+        dramaId: dramaIdStr,
+        episodeNumber: episodeNumber,
+        progress: progress,
+      );
+
+      if (success) {
+        print('保存观看进度成功: 视频${item.id}, 进度${progress}秒');
+      }
+    } catch (e) {
+      print('保存观看进度失败: $e');
+    }
+  }
+
+  /// 获取集数（如果是剧集播放）
+  int? _getEpisodeNumber(VideoItem item) {
+    if (widget.dramaId == null) return null;
+
+    // 根据当前视频在列表中的位置计算集数
+    // 这里是简化逻辑，实际应该根据视频的元数据来确定
+    final index = _items.indexOf(item);
+    if (index >= 0) {
+      return widget.startEpisode != null
+          ? widget.startEpisode! + index
+          : index + 1;
+    }
+    return null;
+  }
+
+  /// 视频切换时保存进度
+  void _onVideoChanged(int newIndex) {
+    if (_currentIndex >= 0 && _currentIndex < _items.length) {
+      // 保存上一个视频的进度
+      final previousItem = _items[_currentIndex];
+      final previousController = _controllers[previousItem.id];
+
+      if (previousController != null &&
+          previousController.value.isInitialized) {
+        final position = previousController.value.position.inSeconds;
+        if (position > 3) {
+          // 播放超过3秒才保存
+          _saveProgress(previousItem, position);
+        }
+      }
+    }
+  }
+
+  /// 从上次观看位置恢复播放
+  Future<void> _resumeFromLastPosition({
+    required VideoItem item,
+    required VideoPlayerController controller,
+  }) async {
+    try {
+      final appState = context.read<AppState>();
+      if (!appState.isLoggedIn) {
+        // 未登录直接播放
+        controller.play();
+        return;
+      }
+
+      // 获取上次观看进度
+      final lastProgress = await WatchHistoryService.getWatchProgress(
+        item.id.toString(),
+      );
+
+      if (lastProgress > 10) {
+        // 如果上次观看超过10秒
+        final duration = controller.value.duration.inSeconds;
+
+        // 不在最后30秒才恢复进度
+        if (lastProgress < duration - 30) {
+          await controller.seekTo(Duration(seconds: lastProgress));
+
+          // 显示恢复提示
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('已恢复到 ${_formatDuration(lastProgress)} 处继续播放'),
+                duration: Duration(seconds: 2),
+                backgroundColor: Colors.black54,
+              ),
+            );
+          }
+        }
+      }
+
+      controller.play();
+    } catch (e) {
+      print('恢复播放进度失败: $e');
+      controller.play(); // 失败时正常播放
+    }
+  }
+
+  /// 格式化时长显示
+  String _formatDuration(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 }

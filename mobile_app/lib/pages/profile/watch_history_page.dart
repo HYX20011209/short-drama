@@ -4,6 +4,7 @@ import '../../models/watch_history.dart';
 import '../../services/watch_history_service.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
+import '../player/video_player_page.dart';
 
 class WatchHistoryPage extends StatefulWidget {
   const WatchHistoryPage({Key? key}) : super(key: key);
@@ -208,17 +209,9 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
 
             // 继续观看按钮
             ElevatedButton(
-              onPressed: () {
-                // TODO: 跳转到播放页面继续观看
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('继续观看功能开发中...')));
-              },
+              onPressed: () => _continueWatching(history),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               child: const Text('继续观看', style: TextStyle(fontSize: 12)),
             ),
@@ -317,6 +310,36 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
           SnackBar(content: Text('删除失败: $e')),
         );
       }
+    }
+  }
+
+    /// 继续观看功能
+  void _continueWatching(WatchHistory history) {
+    try {
+      if (history.dramaId != null) {
+        // 如果是剧集，跳转到剧集播放器
+        final dramaId = int.parse(history.dramaId!);
+        final episodeNumber = history.episodeNumber ?? 1;
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoPlayerPage(
+              dramaId: dramaId,
+              startEpisode: episodeNumber,
+            ),
+          ),
+        );
+      } else {
+        // 如果是单独视频，这里需要根据实际情况处理
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('单独视频播放功能开发中...')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('无法播放：$e')),
+      );
     }
   }
 }
