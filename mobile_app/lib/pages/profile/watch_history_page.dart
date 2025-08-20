@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../../models/watch_history.dart';
-import '../../services/user_service.dart';
-import '../../widgets/loading_widget.dart';
+import '../../services/watch_history_service.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/loading_widget.dart';
+import '../player/video_player_page.dart';
 
 class WatchHistoryPage extends StatefulWidget {
   const WatchHistoryPage({Key? key}) : super(key: key);
@@ -29,7 +31,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
     });
 
     try {
-      final result = await UserService.getWatchHistory();
+      final result = await WatchHistoryService.getWatchHistory();
       setState(() {
         histories = result;
         loading = false;
@@ -51,12 +53,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
         actions: [
           if (histories.isNotEmpty)
             TextButton(
-              onPressed: () {
-                // TODO: 实现清空历史功能
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('清空功能开发中...')),
-                );
-              },
+              onPressed: () => _showClearHistoryDialog(),
               child: const Text('清空', style: TextStyle(color: Colors.red)),
             ),
         ],
@@ -71,10 +68,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
     }
 
     if (errorMessage != null) {
-      return CustomErrorWidget(
-        message: errorMessage!,
-        onRetry: _loadHistory,
-      );
+      return CustomErrorWidget(message: errorMessage!, onRetry: _loadHistory);
     }
 
     if (histories.isEmpty) {
@@ -82,16 +76,9 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.history,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.history, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text(
-              '暂无观看历史',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
+            Text('暂无观看历史', style: TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
       );
@@ -111,96 +98,125 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
   }
 
   Widget _buildHistoryItem(WatchHistory history) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
+    return Dismissible(
+      key: Key(history.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white, size: 24),
       ),
-      child: Row(
-        children: [
-          // 封面缩略图
-          Container(
-            width: 80,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: history.drama?.coverUrl != null
-                  ? Image.network(
-                      history.drama!.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.movie, color: Colors.grey);
-                      },
-                    )
-                  : const Icon(Icons.movie, color: Colors.grey),
-            ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('确认删除'),
+            content: const Text('确定要删除这条观看记录吗？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('删除'),
+              ),
+            ],
           ),
-          
-          const SizedBox(width: 12),
-          
-          // 剧集信息
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  history.drama?.title ?? '未知剧集',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (history.episodeNumber != null)
+        );
+      },
+      onDismissed: (direction) => _deleteHistoryItem(history),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 封面缩略图
+            Container(
+              width: 80,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: history.drama?.coverUrl != null
+                    ? Image.network(
+                        history.drama!.coverUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(Icons.movie, color: Colors.grey);
+                        },
+                      )
+                    : const Icon(Icons.movie, color: Colors.grey),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // 剧集信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    '观看到第${history.episodeNumber}集',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                    history.drama?.title ?? '未知剧集',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(history.lastWatchTime),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
+                  const SizedBox(height: 4),
+                  if (history.episodeNumber != null)
+                    Text(
+                      '观看到第${history.episodeNumber}集',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '进度: ${history.formattedProgress}',
+                    style: TextStyle(fontSize: 12, color: Colors.blue[600]),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatTime(history.lastWatchTime),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
             ),
-          ),
-          
-          // 继续观看按钮
-          ElevatedButton(
-            onPressed: () {
-              // TODO: 跳转到播放页面继续观看
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('继续观看功能开发中...')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+            // 继续观看按钮
+            ElevatedButton(
+              onPressed: () => _continueWatching(history),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('继续观看', style: TextStyle(fontSize: 12)),
             ),
-            child: const Text('继续观看', style: TextStyle(fontSize: 12)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -217,6 +233,113 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
       return '${difference.inMinutes}分钟前';
     } else {
       return '刚刚';
+    }
+  }
+
+  /// 显示清空历史对话框
+  void _showClearHistoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认清空'),
+        content: const Text('确定要清空所有观看历史吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _clearHistory();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 清空观看历史
+  Future<void> _clearHistory() async {
+    try {
+      final success = await WatchHistoryService.clearWatchHistory();
+      if (success) {
+        setState(() {
+          histories.clear();
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('已清空观看历史')));
+        }
+      } else {
+        throw Exception('清空失败');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('清空失败: $e')));
+      }
+    }
+  }
+
+  /// 删除单条历史记录
+  Future<void> _deleteHistoryItem(WatchHistory history) async {
+    try {
+      final success = await WatchHistoryService.deleteWatchHistory(
+        history.videoId,  // 直接传递String类型的videoId
+      );
+      if (success) {
+        setState(() {
+          histories.remove(history);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('已删除该记录')),
+          );
+        }
+      } else {
+        throw Exception('删除失败');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: $e')),
+        );
+      }
+    }
+  }
+
+    /// 继续观看功能
+  void _continueWatching(WatchHistory history) {
+    try {
+      if (history.dramaId != null) {
+        // 如果是剧集，跳转到剧集播放器
+        final dramaId = int.parse(history.dramaId!);
+        final episodeNumber = history.episodeNumber ?? 1;
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoPlayerPage(
+              dramaId: dramaId,
+              startEpisode: episodeNumber,
+            ),
+          ),
+        );
+      } else {
+        // 如果是单独视频，这里需要根据实际情况处理
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('单独视频播放功能开发中...')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('无法播放：$e')),
+      );
     }
   }
 }

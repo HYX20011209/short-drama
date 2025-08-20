@@ -4,18 +4,30 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hyx.shortdrama.mapper.WatchHistoryMapper;
+import com.hyx.shortdrama.model.entity.Drama;
 import com.hyx.shortdrama.model.entity.WatchHistory;
+import com.hyx.shortdrama.model.vo.DramaVO;
 import com.hyx.shortdrama.model.vo.WatchHistoryVO;
+import com.hyx.shortdrama.service.DramaService;
+import com.hyx.shortdrama.service.UserService;
 import com.hyx.shortdrama.service.WatchHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class WatchHistoryServiceImpl extends ServiceImpl<WatchHistoryMapper, WatchHistory> implements WatchHistoryService {
+
+    @Resource
+    private UserService userService;
+
+    @Resource
+    private DramaService dramaService;
 
     @Override
     public boolean saveOrUpdateProgress(Long userId, Long videoId, Long dramaId, Integer episodeNumber, Integer progress) {
@@ -64,11 +76,17 @@ public class WatchHistoryServiceImpl extends ServiceImpl<WatchHistoryMapper, Wat
                 .orderByDesc("lastWatchTime");
         // 执行分页查询
         Page<WatchHistory> historyPage = this.page(page, queryWrapper);
-        // 转换为VO对象
+        // 转换为VO对象并填充关联信息
         Page<WatchHistoryVO> watchHistoryVOPage = new Page<>();
-        watchHistoryVOPage.setRecords(historyPage.getRecords().stream()
-                .map(WatchHistoryVO::objToVo)
-                .collect(Collectors.toList()));
+        List<WatchHistoryVO> voList = historyPage.getRecords().stream()
+                .map(this::convertToVOWithRelatedInfo)
+                .collect(Collectors.toList());
+
+        watchHistoryVOPage.setRecords(voList);
+        watchHistoryVOPage.setCurrent(historyPage.getCurrent());
+        watchHistoryVOPage.setSize(historyPage.getSize());
+        watchHistoryVOPage.setTotal(historyPage.getTotal());
+
         return watchHistoryVOPage;
     }
 
@@ -105,5 +123,40 @@ public class WatchHistoryServiceImpl extends ServiceImpl<WatchHistoryMapper, Wat
         WatchHistory watchHistory = this.getOne(queryWrapper);
 
         return watchHistory != null ? watchHistory.getProgress() : 0;
+    }
+
+    /**
+     * 转换为VO并填充关联信息
+     *
+     * @param watchHistory 观看历史实体
+     * @return 包含关联信息的VO
+     */
+    private WatchHistoryVO convertToVOWithRelatedInfo(WatchHistory watchHistory) {
+        if (watchHistory == null) {
+            return null;
+        }
+
+        WatchHistoryVO vo = WatchHistoryVO.objToVo(watchHistory);
+
+        // 填充Drama信息
+        if (watchHistory.getDramaId() != null) {
+            try {
+                Drama drama = dramaService.getById(watchHistory.getDramaId());
+                if (drama != null) {
+                    DramaVO dramaVO = dramaService.getDramaVO(drama);
+                    vo.setDrama(dramaVO);
+                }
+            } catch (Exception e) {
+                log.warn("获取剧集信息失败，dramaId: {}, error: {}",
+                        watchHistory.getDramaId(), e.getMessage());
+            }
+        }
+
+        // 可以在这里添加Video信息的填充（如果需要的话）
+        // if (watchHistory.getVideoId() != null) {
+        //     // 填充Video信息的逻辑
+        // }
+
+        return vo;
     }
 }

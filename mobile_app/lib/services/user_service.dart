@@ -6,27 +6,21 @@ import '../models/drama.dart';
 import '../models/user.dart';
 import '../models/watch_history.dart';
 import '../utils/constants.dart';
-import '../utils/network_helper.dart';
+import 'api_service.dart';
+import 'favorite_service.dart';
+import 'watch_history_service.dart';
 
 class UserService {
   /// 用户登录
   static Future<User?> login(String userAccount, String password) async {
     try {
-      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userLogin}');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'userAccount': userAccount,
-          'userPassword': password,
-        }),
+      final response = await ApiService.login(
+        userAccount: userAccount,
+        userPassword: password,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['code'] == 0 && data['data'] != null) {
-          return User.fromJson(data['data']);
-        }
+      if (response != null && response['data'] != null) {
+        return User.fromJson(response['data']);
       }
       return null;
     } catch (e) {
@@ -41,24 +35,13 @@ class UserService {
     String checkPassword,
   ) async {
     try {
-      final url = Uri.parse(
-        '${ApiConstants.baseUrl}${ApiConstants.userRegister}',
-      );
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'userAccount': userAccount,
-          'userPassword': password,
-          'checkPassword': checkPassword,
-        }),
+      final response = await ApiService.register(
+        userAccount: userAccount,
+        userPassword: password,
+        checkPassword: checkPassword,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['code'] == 0;
-      }
-      return false;
+      return response != null && response['code'] == 0;
     } catch (e) {
       throw Exception('网络请求失败: $e');
     }
@@ -82,87 +65,45 @@ class UserService {
     }
   }
 
-  /// 获取观看历史
+  /// 获取观看历史（代理方法）
   static Future<List<WatchHistory>> getWatchHistory({
     int current = 1,
     int pageSize = ApiConstants.defaultPageSize,
   }) async {
-    try {
-      final queryParams = {
-        'current': current.toString(),
-        'pageSize': pageSize.toString(),
-      };
-
-      final response = await NetworkHelper.get(
-        ApiConstants.userHistory,
-        queryParams: queryParams,
-      );
-
-      if (response != null) {
-        final List records = response['data']['records'] ?? [];
-        return records.map((json) => WatchHistory.fromJson(json)).toList();
-      }
-    } catch (e) {
-      print('获取观看历史失败: $e');
-    }
-    return [];
+    return await WatchHistoryService.getWatchHistory(
+      pageNum: current,
+      pageSize: pageSize,
+    );
   }
 
-  /// 获取收藏列表
+  /// 获取收藏列表（代理方法）
   static Future<List<Drama>> getFavorites({
     int current = 1,
     int pageSize = ApiConstants.defaultPageSize,
   }) async {
-    try {
-      final queryParams = {
-        'current': current.toString(),
-        'pageSize': pageSize.toString(),
-      };
-
-      final response = await NetworkHelper.get(
-        ApiConstants.userFavorites,
-        queryParams: queryParams,
-      );
-
-      if (response != null) {
-        final List records = response['data']['records'] ?? [];
-        return records.map((json) => Drama.fromJson(json)).toList();
-      }
-    } catch (e) {
-      print('获取收藏列表失败: $e');
-    }
-    return [];
+    return await FavoriteService.getFavorites(
+      pageNum: current,
+      pageSize: pageSize,
+    );
   }
 
-  /// 切换收藏状态
-  static Future<bool> toggleFavorite(int dramaId) async {
-    try {
-      final response = await NetworkHelper.post('/user/favorite/$dramaId', {});
-      return response != null;
-    } catch (e) {
-      print('切换收藏状态失败: $e');
-      return false;
-    }
+  /// 切换收藏状态（代理方法）
+  static Future<bool?> toggleFavorite(String dramaId) async {
+    return await FavoriteService.toggleFavorite(dramaId);
   }
 
-  /// 更新观看进度
+  /// 更新观看进度（代理方法）
   static Future<bool> updateWatchProgress({
-    required int videoId,
-    int? dramaId,
+    required String videoId, // 改为String类型
+    String? dramaId, // 改为String类型
     int? episodeNumber,
     required int progress,
   }) async {
-    try {
-      final response = await NetworkHelper.post('/user/progress', {
-        'videoId': videoId,
-        if (dramaId != null) 'dramaId': dramaId,
-        if (episodeNumber != null) 'episodeNumber': episodeNumber,
-        'progress': progress,
-      });
-      return response != null;
-    } catch (e) {
-      print('更新观看进度失败: $e');
-      return false;
-    }
+    return await WatchHistoryService.updateWatchProgress(
+      videoId: videoId,
+      dramaId: dramaId,
+      episodeNumber: episodeNumber,
+      progress: progress,
+    );
   }
 }

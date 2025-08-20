@@ -1,8 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/user.dart';
+import '../services/api_service.dart';
 import '../services/user_service.dart';
+import '../utils/network_helper.dart';
 
 /// 用户状态管理类
 /// 负责管理用户登录状态、用户信息存储和持久化
@@ -29,8 +33,19 @@ class AppState extends ChangeNotifier {
     _setLoading(true);
     try {
       await _loadUserFromStorage();
+
+      // 验证登录状态是否有效
+      if (_isLoggedIn && _currentUser != null) {
+        final isValid = await _validateStoredLoginStatus();
+        if (!isValid) {
+          // 如果登录状态无效，清除本地存储
+          await _clearLoginState();
+        }
+      }
     } catch (e) {
       _setError('初始化失败: $e');
+      // 初始化失败时清除可能损坏的状态
+      await _clearLoginState();
     } finally {
       _setLoading(false);
     }
@@ -47,7 +62,7 @@ class AppState extends ChangeNotifier {
     try {
       // 调用登录服务
       final user = await UserService.login(userAccount, password);
-      
+
       if (user != null) {
         await _setUser(user, true);
         return true;
@@ -68,7 +83,11 @@ class AppState extends ChangeNotifier {
   /// [password] 用户密码
   /// [confirmPassword] 确认密码
   /// 返回注册是否成功
-  Future<bool> register(String userAccount, String password, String confirmPassword) async {
+  Future<bool> register(
+    String userAccount,
+    String password,
+    String confirmPassword,
+  ) async {
     _setLoading(true);
     _clearError();
 
@@ -80,8 +99,12 @@ class AppState extends ChangeNotifier {
       }
 
       // 调用注册服务
-      final success = await UserService.register(userAccount, password, confirmPassword);
-      
+      final success = await UserService.register(
+        userAccount,
+        password,
+        confirmPassword,
+      );
+
       if (success) {
         // 注册成功后自动登录
         return await login(userAccount, password);
@@ -101,8 +124,12 @@ class AppState extends ChangeNotifier {
   Future<void> logout() async {
     _setLoading(true);
     try {
+      // 清除本地用户信息和存储
       await _setUser(null, false);
       await _clearStorage();
+
+      // 清除Cookie
+      NetworkHelper.clearCookies();
     } catch (e) {
       _setError('登出失败: $e');
     } finally {
@@ -142,12 +169,12 @@ class AppState extends ChangeNotifier {
   Future<void> _setUser(User? user, bool isLoggedIn) async {
     _currentUser = user;
     _isLoggedIn = isLoggedIn;
-    
+
     // 保存到本地存储
     if (user != null && isLoggedIn) {
       await _saveUserToStorage(user);
     }
-    
+
     notifyListeners();
   }
 
@@ -173,7 +200,7 @@ class AppState extends ChangeNotifier {
   Future<void> _loadUserFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // 检查登录状态
       final isLoggedIn = prefs.getBool(_loginStatusKey) ?? false;
       if (!isLoggedIn) {
@@ -185,7 +212,7 @@ class AppState extends ChangeNotifier {
       if (userJson != null) {
         final userMap = json.decode(userJson) as Map<String, dynamic>;
         final user = User.fromJson(userMap);
-        
+
         _currentUser = user;
         _isLoggedIn = true;
         notifyListeners();
@@ -202,7 +229,7 @@ class AppState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userJson = json.encode(user.toJson());
-      
+
       await prefs.setString(_userKey, userJson);
       await prefs.setBool(_loginStatusKey, true);
     } catch (e) {
@@ -219,5 +246,25 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       debugPrint('清除本地存储失败: $e');
     }
+  }
+
+  /// 验证存储的登录状态是否有效
+  Future<bool> _validateStoredLoginStatus() async {
+    try {
+      // 尝试调用需要登录的接口验证状态
+      final response = await ApiService.getCurrentUser();
+      return response != null && response['data'] != null;
+    } catch (e) {
+      print('验证登录状态失败: $e');
+      return false;
+    }
+  }
+
+  /// 清除登录状态
+  Future<void> _clearLoginState() async {
+    _currentUser = null;
+    _isLoggedIn = false;
+    await _clearStorage();
+    notifyListeners();
   }
 }
