@@ -80,7 +80,22 @@ public class DramaServiceImpl extends ServiceImpl<DramaMapper, Drama> implements
     }
 
     /**
-     * 获取用户评论封装
+     * 获取剧集封装（用于Service层内部调用）
+     *
+     * @param drama
+     * @return
+     */
+    @Override
+    public DramaVO getDramaVO(Drama drama) {
+        if (drama == null) {
+            return null;
+        }
+        // 对象转封装类（不包含用户相关状态信息）
+        return DramaVO.objToVo(drama);
+    }
+
+    /**
+     * 获取剧集封装
      *
      * @param drama
      * @param request
@@ -89,11 +104,16 @@ public class DramaServiceImpl extends ServiceImpl<DramaMapper, Drama> implements
     @Override
     public DramaVO getDramaVO(Drama drama, HttpServletRequest request) {
         // 对象转封装类
-        return DramaVO.objToVo(drama);
+        DramaVO dramaVO = DramaVO.objToVo(drama);
+
+        // TODO: 如果需要，可以在这里添加用户相关的状态信息
+        // 比如当前用户是否收藏了这个剧集等
+
+        return dramaVO;
     }
 
     /**
-     * 分页获取用户评论封装
+     * 分页获取剧集封装
      *
      * @param dramaPage
      * @param request

@@ -24,6 +24,11 @@ public interface DramaService extends IService<Drama> {
      * 获取查询条件
      */
     QueryWrapper<Drama> getQueryWrapper(DramaQueryRequest dramaQueryRequest);
+
+    /**
+     * 获取vo（用于Service层内部调用）
+     */
+    DramaVO getDramaVO(Drama drama);
     
     /**
      * 获取vo
