@@ -1,6 +1,16 @@
+import 'dart:io';
+
 class ApiConstants {
-  // 根据运行环境修改为你的后端地址
-  static const String baseUrl = 'http://127.0.0.1:8101/api';
+  // 根据平台动态选择API地址
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      // Android模拟器访问主机的特殊地址
+      return 'http://10.0.2.2:8101/api';
+    } else {
+      // iOS模拟器和其他平台
+      return 'http://127.0.0.1:8101/api';
+    }
+  }
   
   // API端点
   static const String videoFeed = '/video/feed';
