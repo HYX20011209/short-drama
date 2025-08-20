@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../../models/drama.dart';
+import '../../services/favorite_service.dart';
 import '../player/video_player_page.dart';
 
 class DramaDetailPage extends StatelessWidget {
   final Drama drama;
 
-  const DramaDetailPage({
-    Key? key,
-    required this.drama,
-  }) : super(key: key);
+  const DramaDetailPage({Key? key, required this.drama}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final cover = drama.coverUrl;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('剧集详情'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('剧集详情'), centerTitle: true),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +55,10 @@ class DramaDetailPage extends StatelessWidget {
                     children: [
                       if (drama.category != null && drama.category!.isNotEmpty)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.blue[50],
                             borderRadius: BorderRadius.circular(6),
@@ -80,7 +79,8 @@ class DramaDetailPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  if (drama.description != null && drama.description!.isNotEmpty)
+                  if (drama.description != null &&
+                      drama.description!.isNotEmpty)
                     Text(
                       drama.description!,
                       style: const TextStyle(fontSize: 14, height: 1.5),
@@ -102,16 +102,22 @@ class DramaDetailPage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () {
-                        // 先使用现有的 VideoPlayerPage 保持体验稳定
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VideoPlayerPage(
-                              dramaId: drama.id,
-                              startEpisode: 1,
+                        try {
+                          final dramaId = int.parse(drama.id);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => VideoPlayerPage(
+                                dramaId: dramaId,
+                                startEpisode: 1,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('无效的剧集ID: ${drama.id}')),
+                          );
+                        }
                       },
                     ),
                   ),
@@ -119,11 +125,27 @@ class DramaDetailPage extends StatelessWidget {
                   OutlinedButton.icon(
                     icon: const Icon(Icons.favorite_border),
                     label: const Text('收藏'),
-                    onPressed: () {
-                      // TODO: 接入收藏接口
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('收藏功能待接入')),
-                      );
+                    onPressed: () async {
+                      try {
+                        // TODO: 根据当前收藏状态显示不同图标
+                        final result = await FavoriteService.toggleFavorite(
+                          drama.id,
+                        );
+                        if (result != null) {
+                          final message = result ? '已添加到收藏' : '已取消收藏';
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(message)));
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
+                        }
+                      }
                     },
                   ),
                 ],
@@ -137,10 +159,7 @@ class DramaDetailPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 '选集（待接入）',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
               ),
             ),
             const SizedBox(height: 8),
@@ -153,15 +172,22 @@ class DramaDetailPage extends StatelessWidget {
                   drama.totalEpisodes.clamp(0, 12), // 占位最多12个
                   (i) => OutlinedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VideoPlayerPage(
-                            dramaId: drama.id,
-                            startEpisode: i + 1,
+                      try {
+                        final dramaId = int.parse(drama.id);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VideoPlayerPage(
+                              dramaId: dramaId,
+                              startEpisode: i + 1,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('无效的剧集ID: ${drama.id}')),
+                        );
+                      }
                     },
                     child: Text('第${i + 1}集'),
                   ),

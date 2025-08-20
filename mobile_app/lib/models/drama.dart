@@ -1,5 +1,5 @@
 class Drama {
-  final int id;
+  final String id;
   final String title;
   final String? description;
   final String? coverUrl;
@@ -36,7 +36,7 @@ class Drama {
     }
 
     return Drama(
-      id: parseIntOrNull(json['id']) ?? 0,
+      id: json['id']?.toString() ?? '0',
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
