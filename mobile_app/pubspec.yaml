@@ -38,6 +38,10 @@ dependencies:
   video_player: ^2.8.6
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
+  cookie_jar: ^4.0.8
+  dio: ^5.9.0
+  dio_cookie_manager: ^3.3.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
