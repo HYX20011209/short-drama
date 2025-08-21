@@ -92,6 +92,44 @@ public class DramaController {
         return ResultUtils.success(voList);
     }
 
+    /**
+     * 搜索剧集
+     *
+     * @param searchText 搜索关键词
+     * @param current 当前页
+     * @param pageSize 页面大小
+     * @param category 分类筛选
+     * @param request HTTP请求
+     * @return 搜索结果
+     */
+    @GetMapping("/search")
+    public BaseResponse<Page<DramaVO>> searchDramas(@RequestParam String searchText,
+                                                    @RequestParam(defaultValue = "1") long current,
+                                                    @RequestParam(defaultValue = "10") long pageSize,
+                                                    @RequestParam(required = false) String category,
+                                                    HttpServletRequest request){
+        ThrowUtils.throwIf(pageSize > PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(searchText == null || searchText.trim().isEmpty(),
+                ErrorCode.PARAMS_ERROR, "搜索关键词不能为空");
+
+        DramaQueryRequest dramaQueryRequest = new DramaQueryRequest();
+        dramaQueryRequest.setSearchText(searchText);
+        dramaQueryRequest.setCurrent((int)current);
+        dramaQueryRequest.setPageSize((int)pageSize);
+
+        QueryWrapper<Drama> queryWrapper = dramaService.getQueryWrapper(dramaQueryRequest);
+
+        // 添加状态和分类筛选
+        queryWrapper.eq("status", 1);
+        if (category != null && !category.isEmpty()) {
+            queryWrapper.eq("category", category);
+        }
+
+        Page<Drama> dramaPage = dramaService.page(new Page<>(current, pageSize), queryWrapper);
+
+        return ResultUtils.success(dramaService.getDramaVOPage(dramaPage, request));
+    }
+
 
     // region 增删改查（自动生成）
 
