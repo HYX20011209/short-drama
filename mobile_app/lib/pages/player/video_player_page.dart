@@ -31,10 +31,49 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _loading = false;
   bool _hasMore = true;
 
-  // 播放速度常量
+  // ==================== 播放控制常量 ====================
+  // 播放速度相关
   static const double _normalSpeed = 1.0;
   static const double _fastSpeed = 3.0;
-
+  
+  // 分页相关
+  static const int _defaultPageSize = 10;
+  static const int _loadMoreThreshold = 3; // 剩余3条时加载更多
+  
+  // 预加载相关
+  static const int _preloadNextCount = 1; // 预加载下1条
+  static const int _disposeBeforeCount = 2; // 提前2条释放资源
+  
+  // 进度保存相关
+  static const int _progressSaveInterval = 5; // 每5秒保存一次进度
+  static const int _minProgressDiff = 3; // 进度变化超过3秒才保存
+  static const int _minVideoDurationForSave = 10; // 视频太短不保存（秒）
+  static const int _startSaveThreshold = 3; // 开始3秒内不保存（秒）
+  static const int _endSaveThreshold = 10; // 结束前10秒不保存（秒）
+  static const int _minPositionForSave = 3; // 播放超过3秒才保存（秒）
+  
+  // 进度恢复相关
+  static const int _defaultMinResumeSeconds = 10; // 默认最小恢复阈值（秒）
+  static const int _defaultTailGuardSeconds = 30; // 默认尾部保护（秒）
+  static const int _aggressiveMinResumeSeconds = 1; // 激进恢复阈值（秒）
+  static const int _aggressiveTailGuardSeconds = 5; // 激进尾部保护（秒）
+  
+  // 视频初始化相关
+  static const int _maxInitAttempts = 50; // 最多等待初始化次数
+  static const int _initCheckIntervalMs = 100; // 初始化检查间隔（毫秒）
+  
+  // UI相关
+  static const double _playButtonSize = 72.0;
+  static const double _backButtonSize = 28.0;
+  static const double _titleFontSize = 16.0;
+  static const double _titleBottomMargin = 40.0;
+  static const double _titleLeftMargin = 16.0;
+  static const double _titleRightMargin = 16.0;
+  static const double _backButtonTopMargin = 10.0;
+  static const double _backButtonLeftMargin = 16.0;
+  static const double _backButtonOpacity = 0.5;
+  static const double _backButtonRadius = 20.0;
+  
   // 每个视频期望的速度（默认 1.0），以及当前长按的视频 id
   final Map<int, double> _desiredSpeed = {};
   int? _longPressVideoId;
@@ -42,13 +81,24 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   // 观看进度相关
   Timer? _progressTimer;
   final Map<int, int> _lastSavedProgress = {}; // 记录每个视频上次保存的进度
-  static const int _progressSaveInterval = 5; // 每5秒保存一次进度
-  static const int _minProgressDiff = 3; // 进度变化超过3秒才保存
 
   @override
   void initState() {
     super.initState();
-    _loadMore().then((_) => _playAt(0));
+    _loadMore().then((_) {
+      // 根据入口参数定位初始页
+      int initialIndex = 0;
+      if (widget.dramaId != null && widget.startEpisode != null) {
+        final idx = widget.startEpisode! - 1;
+        if (idx >= 0 && idx < _items.length) {
+          initialIndex = idx;
+        }
+      }
+      if (initialIndex > 0) {
+        _pageController.jumpToPage(initialIndex);
+      }
+      _playAt(initialIndex);
+    });
     _startProgressTimer(); // 启动进度保存定时器
   }
 
@@ -59,18 +109,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     try {
       final items = await VideoService.getVideoFeed(
         current: _currentPage,
-        pageSize: _pageSize,
+        pageSize: _defaultPageSize,
         dramaId: widget.dramaId,
       );
 
       setState(() {
         _items.addAll(items);
         _currentPage++;
-        _hasMore = items.length >= _pageSize;
+        _hasMore = items.length >= _defaultPageSize;
       });
 
       _preload(_currentIndex);
-      _preload(_currentIndex + 1);
+      _preload(_currentIndex + _preloadNextCount);
     } catch (e) {
       print('加载视频失败: $e');
     } finally {
@@ -148,9 +198,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   void _waitForInitAndPlay(int videoId) async {
     // 等待视频初始化完成
     int attempts = 0;
-    const maxAttempts = 50; // 最多等待5秒
 
-    while (attempts < maxAttempts) {
+    while (attempts < _maxInitAttempts) {
       final c = _controllers[videoId];
       if (c != null && c.value.isInitialized) {
         // 检查这个视频是否仍然是当前视频，且用户没有主动暂停
@@ -158,13 +207,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             _items[_currentIndex].id == videoId &&
             !_userPausedVideos.contains(videoId)) {
           _applyDesiredSpeed(videoId);
-          c.play();
-          // 确保UI更新
+          // 初始化完成后优先尝试从后台进度恢复
+          final item = _items[_currentIndex];
+          await _resumeFromLastPosition(item: item, controller: c);
           setState(() {});
         }
         return;
       }
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(Duration(milliseconds: _initCheckIntervalMs));
       attempts++;
     }
   }
@@ -209,8 +259,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }
 
     _preload(index + 1);
-    _disposeAt(index - 2);
-    if (index >= _items.length - 3) _loadMore();
+    _disposeAt(index - _disposeBeforeCount);
+    if (index >= _items.length - _loadMoreThreshold) _loadMore();
   }
 
   @override
@@ -273,20 +323,20 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                       const Center(
                         child: Icon(
                           Icons.play_arrow,
-                          size: 72,
+                          size: _playButtonSize,
                           color: Colors.white70,
                         ),
                       ),
 
                     Positioned(
-                      left: 16,
-                      bottom: 40,
-                      right: 16,
+                      left: _titleLeftMargin,
+                      bottom: _titleBottomMargin,
+                      right: _titleRightMargin,
                       child: Text(
                         item.title ?? '',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: _titleFontSize,
                         ),
                       ),
                     ),
@@ -299,18 +349,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           // 返回按钮（仅在从剧集进入时显示）
           if (widget.dramaId != null)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 16,
+              top: MediaQuery.of(context).padding.top + _backButtonTopMargin,
+              left: _backButtonLeftMargin,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.black.withOpacity(_backButtonOpacity),
+                  borderRadius: BorderRadius.circular(_backButtonRadius),
                 ),
                 child: IconButton(
                   icon: const Icon(
                     Icons.arrow_back,
                     color: Colors.white,
-                    size: 28,
+                    size: _backButtonSize,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -336,6 +386,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     final appState = context.read<AppState>();
     if (!appState.isLoggedIn) return; // 未登录不保存
 
+    // 推荐流（无视频上下文）暂不保存进度，避免产生“无剧集信息”的历史
+    if (widget.dramaId == null) return;
+
     final currentItem = _items[_currentIndex];
     final controller = _controllers[currentItem.id];
 
@@ -354,10 +407,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   /// 判断是否应该保存进度
   bool _shouldSaveProgress(int videoId, int currentPosition, int duration) {
     // 视频太短不保存
-    if (duration < 10) return false;
+    if (duration < _minVideoDurationForSave) return false;
 
     // 刚开始的3秒和最后10秒不保存
-    if (currentPosition < 3 || currentPosition > duration - 10) return false;
+    if (currentPosition < _startSaveThreshold || currentPosition > duration - _endSaveThreshold) return false;
 
     // 检查进度变化是否足够大
     final lastSaved = _lastSavedProgress[videoId] ?? 0;
@@ -389,19 +442,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   int? _getEpisodeNumber(VideoItem item) {
     if (widget.dramaId == null) return null;
 
-    // 根据当前视频在列表中的位置计算集数
-    // 这里是简化逻辑，实际应该根据视频的元数据来确定
+    // 按在列表中的位置计算集数：从1开始
     final index = _items.indexOf(item);
     if (index >= 0) {
-      return widget.startEpisode != null
-          ? widget.startEpisode! + index
-          : index + 1;
+      return index + 1;
     }
     return null;
   }
 
   /// 视频切换时保存进度
   void _onVideoChanged(int newIndex) {
+    // 推荐流（无视频上下文）暂不保存进度，避免产生“无剧集信息”的历史
+    if (widget.dramaId == null) return;
     if (_currentIndex >= 0 && _currentIndex < _items.length) {
       // 保存上一个视频的进度
       final previousItem = _items[_currentIndex];
@@ -410,7 +462,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       if (previousController != null &&
           previousController.value.isInitialized) {
         final position = previousController.value.position.inSeconds;
-        if (position > 3) {
+        if (position > _minPositionForSave) {
           // 播放超过3秒才保存
           _saveProgress(previousItem, position);
         }
@@ -436,15 +488,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         item.id.toString(),
       );
 
-      if (lastProgress > 10) {
-        // 如果上次观看超过10秒
+      final aggressive = widget.dramaId != null && widget.startEpisode != null;
+      final minResumeSec = aggressive ? _aggressiveMinResumeSeconds : _defaultMinResumeSeconds;
+      final tailGuardSec = aggressive ? _aggressiveTailGuardSeconds : _defaultTailGuardSeconds;
+
+      if (lastProgress > minResumeSec) {
         final duration = controller.value.duration.inSeconds;
-
-        // 不在最后30秒才恢复进度
-        if (lastProgress < duration - 30) {
+        if (lastProgress < duration - tailGuardSec) {
           await controller.seekTo(Duration(seconds: lastProgress));
-
-          // 显示恢复提示
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
