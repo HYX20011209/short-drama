@@ -11,17 +11,18 @@ class ApiConstants {
       return 'http://127.0.0.1:8101/api';
     }
   }
-  
+
   // API端点
   static const String videoFeed = '/video/feed';
   static const String dramaList = '/drama/list';
+  static const String dramaSearch = '/drama/search';
   static const String dramaDetail = '/drama';
   static const String dramaEpisodes = '/drama/{id}/episodes';
   static const String userHistory = '/user/history';
   static const String userFavorites = '/user/favorites';
   static const String userLogin = '/user/login';
   static const String userRegister = '/user/register';
-  
+
   // 分页配置
   static const int defaultPageSize = 10;
   static const int maxPageSize = 20;
