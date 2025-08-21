@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+
 import '../../models/drama.dart';
 import '../../services/drama_service.dart';
 import '../../widgets/drama_card.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
-import '../player/video_player_page.dart';
+import '../../widgets/loading_widget.dart';
 import '../drama_detail/drama_detail_page.dart';
+import '../search/search_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -91,10 +92,10 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: 实现搜索功能
-              ScaffoldMessenger.of(
+              Navigator.push(
                 context,
-              ).showSnackBar(const SnackBar(content: Text('搜索功能开发中...')));
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
             },
           ),
         ],

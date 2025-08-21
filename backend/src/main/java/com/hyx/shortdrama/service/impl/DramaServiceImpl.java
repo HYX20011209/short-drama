@@ -67,12 +67,21 @@ public class DramaServiceImpl extends ServiceImpl<DramaMapper, Drama> implements
         Long id = req.getId();
         Long notId = req.getNotId();
         String title = req.getTitle();
+        String searchText = req.getSearchText();
         Long userId = req.getUserId();
 
         qw.ne(notId != null, "id", notId);
         qw.eq(id != null, "id", id);
         qw.eq(userId != null, "userId", userId);
         qw.like(title != null && !title.isEmpty(), "title", title);
+
+        // 同时搜索标题和描述
+        if (searchText != null && !searchText.trim().isEmpty()) {
+            qw.and(wrapper -> wrapper
+                    .like("title", searchText.trim()))
+                    .or()
+                    .like("description", searchText.trim());
+        }
 
         // 排序（默认）
         qw.orderByDesc("orderNum").orderByDesc("id");
