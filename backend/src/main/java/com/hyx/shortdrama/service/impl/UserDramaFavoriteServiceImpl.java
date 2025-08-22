@@ -11,6 +11,7 @@ import com.hyx.shortdrama.service.DramaService;
 import com.hyx.shortdrama.service.UserDramaFavoriteService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.Date;
@@ -27,6 +28,7 @@ public class UserDramaFavoriteServiceImpl extends ServiceImpl<UserDramaFavoriteM
     private DramaService dramaService;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean addFavorite(Long userId, Long dramaId) {
         if (userId == null || dramaId == null) {
             return false;
@@ -99,6 +101,7 @@ public class UserDramaFavoriteServiceImpl extends ServiceImpl<UserDramaFavoriteM
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean toggleFavorite(Long userId, Long dramaId) {
         if (isFavorited(userId, dramaId)) {
             // 已收藏，则取消收藏
