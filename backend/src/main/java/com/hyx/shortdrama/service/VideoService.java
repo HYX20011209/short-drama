@@ -8,6 +8,7 @@ import com.hyx.shortdrama.model.entity.Video;
 import com.hyx.shortdrama.model.vo.VideoVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 public interface VideoService extends IService<Video> {
 
@@ -18,4 +19,8 @@ public interface VideoService extends IService<Video> {
     VideoVO getVideoVO(Video video, HttpServletRequest request);
 
     Page<VideoVO> getVideoVOPage(Page<Video> page, HttpServletRequest request);
+
+    List<VideoVO> listEpisodes(long dramaId, HttpServletRequest request);
+
+    Page<VideoVO> feed(long current, long pageSize, Long dramaId, HttpServletRequest request);
 }

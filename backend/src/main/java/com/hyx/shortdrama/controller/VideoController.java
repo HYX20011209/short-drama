@@ -1,12 +1,11 @@
 package com.hyx.shortdrama.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.hyx.shortdrama.annotation.AuthCheck;
 import com.hyx.shortdrama.common.BaseResponse;
 import com.hyx.shortdrama.common.ErrorCode;
 import com.hyx.shortdrama.common.ResultUtils;
-import com.hyx.shortdrama.constant.UserConstant;
+import com.hyx.shortdrama.constant.CacheConstant;
+import com.hyx.shortdrama.constant.CommonConstant;
 import com.hyx.shortdrama.exception.BusinessException;
 import com.hyx.shortdrama.exception.ThrowUtils;
 import com.hyx.shortdrama.model.dto.video.VideoAddRequest;
@@ -17,6 +16,8 @@ import com.hyx.shortdrama.service.UserService;
 import com.hyx.shortdrama.service.VideoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -35,6 +36,10 @@ public class VideoController {
 
     @PostMapping("/add")
 //    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE) // 仅管理员新增
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConstant.VIDEO_FEED, allEntries = true),
+            @CacheEvict(cacheNames = CacheConstant.VIDEO_EPISODES, key = "#addRequest.dramaId", condition = "#addRequest != null && #addRequest.dramaId != null")
+    })
     public BaseResponse<Long> addVideo(@RequestBody VideoAddRequest addRequest, HttpServletRequest request) {
         if (addRequest == null) throw new BusinessException(ErrorCode.PARAMS_ERROR);
         Video v = new Video();
@@ -64,20 +69,7 @@ public class VideoController {
                                             @RequestParam(defaultValue = "10") long pageSize,
                                             @RequestParam(required = false) Long dramaId,
                                             HttpServletRequest request) {
-        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR);
-        QueryWrapper<Video> qw = new QueryWrapper<Video>()
-                .eq("status", 1);
-
-        if (dramaId != null) {
-            qw.eq("dramaId", dramaId)
-                    .orderByAsc("episodeNumber")
-                    .orderByAsc("id");
-        } else {
-            qw.orderByDesc("orderNum")
-                    .orderByDesc("id");
-        }
-
-        Page<Video> page = videoService.page(new Page<>(current, pageSize), qw);
-        return ResultUtils.success(videoService.getVideoVOPage(page, request));
+        ThrowUtils.throwIf(pageSize > CommonConstant.PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(videoService.feed(current, pageSize, dramaId, request));
     }
 }
