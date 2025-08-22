@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hyx.shortdrama.common.ErrorCode;
+import com.hyx.shortdrama.constant.CacheConstant;
 import com.hyx.shortdrama.exception.BusinessException;
 import com.hyx.shortdrama.mapper.DramaMapper;
 import com.hyx.shortdrama.model.dto.drama.DramaQueryRequest;
@@ -13,6 +14,7 @@ import com.hyx.shortdrama.model.vo.DramaVO;
 import com.hyx.shortdrama.service.DramaService;
 import com.hyx.shortdrama.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -140,6 +142,61 @@ public class DramaServiceImpl extends ServiceImpl<DramaMapper, Drama> implements
 
         dramaVOPage.setRecords(dramaVOList);
         return dramaVOPage;
+    }
+
+
+    @Override
+    @Cacheable(
+            cacheNames = CacheConstant.DRAMA_LIST,
+            key = "T(com.hyx.shortdrama.utils.CacheKeyBuilders).dramaList(#category,#current,#pageSize)",
+            condition = "@cacheSwitch.enabled",
+            sync = true
+    )
+    public Page<DramaVO> listPublic(long current, long pageSize, String category, HttpServletRequest request) {
+        QueryWrapper<Drama> qw = new QueryWrapper<Drama>().eq("status", 1);
+        if (category != null && !category.isEmpty()) {
+            qw.eq("category", category);
+        }
+        qw.orderByDesc("orderNum").orderByDesc("id");
+        Page<Drama> page = this.page(new Page<>(current, pageSize), qw);
+        return getDramaVOPage(page, request);
+    }
+
+    @Override
+    @Cacheable(
+            cacheNames = CacheConstant.DRAMA_DETAIL,
+            key = "T(com.hyx.shortdrama.utils.CacheKeyBuilders).dramaDetail(#id)",
+            condition = "@cacheSwitch.enabled",
+            sync = true
+    )
+    public DramaVO getDramaDetail(long id, HttpServletRequest request) {
+        Drama drama = this.getById(id);
+        if (drama == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        return getDramaVO(drama, request);
+    }
+
+    @Override
+    @Cacheable(
+            cacheNames = CacheConstant.DRAMA_SEARCH,
+            key = "T(com.hyx.shortdrama.utils.CacheKeyBuilders).dramaSearch(#searchText,#category,#current,#pageSize)",
+            condition = "@cacheSwitch.enabled && #pageSize <= T(com.hyx.shortdrama.constant.CommonConstant).PAGE_SIZE_LIMIT && #searchText != null && #searchText.length() <= 50",
+            sync = true
+    )
+    public Page<DramaVO> search(String searchText, long current, long pageSize, String category, HttpServletRequest request) {
+        DramaQueryRequest dramaQueryRequest = new DramaQueryRequest();
+        dramaQueryRequest.setSearchText(searchText);
+        dramaQueryRequest.setCurrent((int) current);
+        dramaQueryRequest.setPageSize((int) pageSize);
+
+        QueryWrapper<Drama> queryWrapper = getQueryWrapper(dramaQueryRequest);
+        queryWrapper.eq("status", 1);
+        if (category != null && !category.isEmpty()) {
+            queryWrapper.eq("category", category);
+        }
+        Page<Drama> dramaPage = this.page(new Page<>(current, pageSize), queryWrapper);
+        return getDramaVOPage(dramaPage, request);
     }
 
 }
