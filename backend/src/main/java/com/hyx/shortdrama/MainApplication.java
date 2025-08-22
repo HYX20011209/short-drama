@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
  * 主类（项目启动入口）
@@ -17,6 +18,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @MapperScan("com.hyx.shortdrama.mapper")
 @EnableScheduling
 @EnableCaching
+@EnableTransactionManagement
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
 public class MainApplication {
 

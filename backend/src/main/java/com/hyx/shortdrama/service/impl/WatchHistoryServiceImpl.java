@@ -13,6 +13,7 @@ import com.hyx.shortdrama.service.UserService;
 import com.hyx.shortdrama.service.WatchHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.Date;
@@ -30,6 +31,7 @@ public class WatchHistoryServiceImpl extends ServiceImpl<WatchHistoryMapper, Wat
     private DramaService dramaService;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean saveOrUpdateProgress(Long userId, Long videoId, Long dramaId, Integer episodeNumber, Integer progress) {
         if (userId == null || videoId == null || progress == null) {
             return false;
