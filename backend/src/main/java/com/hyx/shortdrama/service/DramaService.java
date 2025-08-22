@@ -39,4 +39,10 @@ public interface DramaService extends IService<Drama> {
      * 分页获取vo
      */
     Page<DramaVO> getDramaVOPage(Page<Drama> dramaPage, HttpServletRequest request);
+
+    Page<DramaVO> listPublic(long current, long pageSize, String category, HttpServletRequest request);
+
+    DramaVO getDramaDetail(long id, HttpServletRequest request);
+
+    Page<DramaVO> search(String searchText, long current, long pageSize, String category, HttpServletRequest request);
 }

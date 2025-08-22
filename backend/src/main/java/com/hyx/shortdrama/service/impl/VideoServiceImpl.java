@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hyx.shortdrama.common.ErrorCode;
+import com.hyx.shortdrama.constant.CacheConstant;
 import com.hyx.shortdrama.constant.CommonConstant;
 import com.hyx.shortdrama.exception.BusinessException;
 import com.hyx.shortdrama.mapper.VideoMapper;
@@ -14,9 +15,11 @@ import com.hyx.shortdrama.service.VideoService;
 import com.hyx.shortdrama.utils.SqlUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -81,5 +84,40 @@ public class VideoServiceImpl extends ServiceImpl<VideoMapper, Video> implements
         Page<VideoVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         voPage.setRecords(page.getRecords().stream().map(VideoVO::objToVo).collect(Collectors.toList()));
         return voPage;
+    }
+
+    @Override
+    @Cacheable(
+            cacheNames = CacheConstant.VIDEO_EPISODES,
+            key = "T(com.hyx.shortdrama.utils.CacheKeyBuilders).videoEpisodes(#dramaId)",
+            condition = "@cacheSwitch.enabled",
+            sync = true
+    )
+    public List<VideoVO> listEpisodes(long dramaId, HttpServletRequest request) {
+        QueryWrapper<Video> qw = new QueryWrapper<Video>()
+                .eq("status", 1)
+                .eq("dramaId", dramaId)
+                .orderByAsc("episodeNumber")
+                .orderByAsc("id");
+        List<Video> list = this.list(qw);
+        return list.stream().map(v -> getVideoVO(v, request)).collect(Collectors.toList());
+    }
+
+    @Override
+    @Cacheable(
+            cacheNames = CacheConstant.VIDEO_FEED,
+            key = "T(com.hyx.shortdrama.utils.CacheKeyBuilders).videoFeed(#dramaId,#current,#pageSize)",
+            condition = "@cacheSwitch.enabled && #pageSize <= T(com.hyx.shortdrama.constant.CommonConstant).FEED_SIZE_LIMIT",
+            sync = true
+    )
+    public Page<VideoVO> feed(long current, long pageSize, Long dramaId, HttpServletRequest request) {
+        QueryWrapper<Video> qw = new QueryWrapper<Video>().eq("status", 1);
+        if (dramaId != null) {
+            qw.eq("dramaId", dramaId).orderByAsc("episodeNumber").orderByAsc("id");
+        } else {
+            qw.orderByDesc("orderNum").orderByDesc("id");
+        }
+        Page<Video> page = this.page(new Page<>(current, pageSize), qw);
+        return getVideoVOPage(page, request);
     }
 }

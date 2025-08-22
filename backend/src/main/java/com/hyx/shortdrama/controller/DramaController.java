@@ -1,12 +1,13 @@
 package com.hyx.shortdrama.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hyx.shortdrama.annotation.AuthCheck;
 import com.hyx.shortdrama.common.BaseResponse;
 import com.hyx.shortdrama.common.DeleteRequest;
 import com.hyx.shortdrama.common.ErrorCode;
 import com.hyx.shortdrama.common.ResultUtils;
+import com.hyx.shortdrama.constant.CacheConstant;
+import com.hyx.shortdrama.constant.CommonConstant;
 import com.hyx.shortdrama.constant.UserConstant;
 import com.hyx.shortdrama.exception.BusinessException;
 import com.hyx.shortdrama.exception.ThrowUtils;
@@ -16,7 +17,6 @@ import com.hyx.shortdrama.model.dto.drama.DramaQueryRequest;
 import com.hyx.shortdrama.model.dto.drama.DramaUpdateRequest;
 import com.hyx.shortdrama.model.entity.Drama;
 import com.hyx.shortdrama.model.entity.User;
-import com.hyx.shortdrama.model.entity.Video;
 import com.hyx.shortdrama.model.vo.DramaVO;
 import com.hyx.shortdrama.model.vo.VideoVO;
 import com.hyx.shortdrama.service.DramaService;
@@ -24,12 +24,13 @@ import com.hyx.shortdrama.service.UserService;
 import com.hyx.shortdrama.service.VideoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 用户评论接口
@@ -50,46 +51,27 @@ public class DramaController {
     @Resource
     private VideoService videoService;
 
-    private static final Integer PAGE_SIZE_LIMIT = 20;
 
     @GetMapping("/list")
     public BaseResponse<Page<DramaVO>> listPublic(@RequestParam(defaultValue = "1") long current,
                                                   @RequestParam(defaultValue = "10") long pageSize,
                                                   @RequestParam(required = false) String category,
                                                   HttpServletRequest request) {
-        ThrowUtils.throwIf(pageSize > PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
-        QueryWrapper<Drama> qw = new QueryWrapper<Drama>()
-                .eq("status", 1);
-        if (category != null && !category.isEmpty()) {
-            qw.eq("category", category);
-        }
-        qw.orderByDesc("orderNum").orderByDesc("id");
-        Page<Drama> page = dramaService.page(new Page<>(current, pageSize), qw);
-        return ResultUtils.success(dramaService.getDramaVOPage(page, request));
+        ThrowUtils.throwIf(pageSize > CommonConstant.PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(dramaService.listPublic(current, pageSize, category, request));
     }
 
     @GetMapping("/{id}")
     public BaseResponse<DramaVO> getByPath(@PathVariable("id") long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        Drama drama = dramaService.getById(id);
-        ThrowUtils.throwIf(drama == null, ErrorCode.NOT_FOUND_ERROR);
-        return ResultUtils.success(dramaService.getDramaVO(drama, request));
+        return ResultUtils.success(dramaService.getDramaDetail(id,  request));
     }
 
     @GetMapping("/{id}/episodes")
     public BaseResponse<List<VideoVO>> listEpisodes(@PathVariable("id") long id,
                                                               HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        QueryWrapper<Video> qw = new QueryWrapper<Video>()
-                                .eq("status", 1)
-                                .eq("dramaId", id)
-                                .orderByAsc("episodeNumber")
-                                .orderByAsc("id");
-        List<Video> list = videoService.list(qw);
-        List<VideoVO> voList = list.stream()
-                .map(v -> videoService.getVideoVO(v, request))
-                .collect(Collectors.toList());
-        return ResultUtils.success(voList);
+        return ResultUtils.success(videoService.listEpisodes(id,  request));
     }
 
     /**
@@ -108,26 +90,11 @@ public class DramaController {
                                                     @RequestParam(defaultValue = "10") long pageSize,
                                                     @RequestParam(required = false) String category,
                                                     HttpServletRequest request){
-        ThrowUtils.throwIf(pageSize > PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(pageSize > CommonConstant.PAGE_SIZE_LIMIT, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(searchText == null || searchText.trim().isEmpty(),
                 ErrorCode.PARAMS_ERROR, "搜索关键词不能为空");
 
-        DramaQueryRequest dramaQueryRequest = new DramaQueryRequest();
-        dramaQueryRequest.setSearchText(searchText);
-        dramaQueryRequest.setCurrent((int)current);
-        dramaQueryRequest.setPageSize((int)pageSize);
-
-        QueryWrapper<Drama> queryWrapper = dramaService.getQueryWrapper(dramaQueryRequest);
-
-        // 添加状态和分类筛选
-        queryWrapper.eq("status", 1);
-        if (category != null && !category.isEmpty()) {
-            queryWrapper.eq("category", category);
-        }
-
-        Page<Drama> dramaPage = dramaService.page(new Page<>(current, pageSize), queryWrapper);
-
-        return ResultUtils.success(dramaService.getDramaVOPage(dramaPage, request));
+        return ResultUtils.success(dramaService.search(searchText, current, pageSize, category, request));
     }
 
 
@@ -141,6 +108,10 @@ public class DramaController {
      * @return
      */
     @PostMapping("/add")
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_LIST, allEntries = true),
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_SEARCH, allEntries = true)
+    })
     public BaseResponse<Long> addDrama(@RequestBody DramaAddRequest dramaAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(dramaAddRequest == null, ErrorCode.PARAMS_ERROR);
         // todo 在此处将实体类和 DTO 进行转换
@@ -170,6 +141,12 @@ public class DramaController {
      * @return
      */
     @PostMapping("/delete")
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_DETAIL, key = "#deleteRequest.id", condition = "#deleteRequest != null && #deleteRequest.id > 0"),
+            @CacheEvict(cacheNames = CacheConstant.VIDEO_EPISODES, key = "#deleteRequest.id", condition = "#deleteRequest != null && #deleteRequest.id > 0"),
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_LIST, allEntries = true),
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_SEARCH, allEntries = true)
+    })
     public BaseResponse<Boolean> deleteDrama(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -197,6 +174,12 @@ public class DramaController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_DETAIL,   key = "#dramaUpdateRequest.id", condition = "#dramaUpdateRequest != null && #dramaUpdateRequest.id > 0"),
+            @CacheEvict(cacheNames = CacheConstant.VIDEO_EPISODES, key = "#dramaUpdateRequest.id", condition = "#dramaUpdateRequest != null && #dramaUpdateRequest.id > 0"),
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_LIST,     allEntries = true),
+            @CacheEvict(cacheNames = CacheConstant.DRAMA_SEARCH,   allEntries = true)
+    })
     public BaseResponse<Boolean> updateDrama(@RequestBody DramaUpdateRequest dramaUpdateRequest) {
         if (dramaUpdateRequest == null || dramaUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
