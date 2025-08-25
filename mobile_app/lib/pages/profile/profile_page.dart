@@ -2,204 +2,428 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/app_state.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_dimensions.dart';
+import '../../theme/app_shadows.dart';
+import '../../theme/app_text_styles.dart';
 import '../auth/login_page.dart';
 import 'favorites_page.dart';
 import 'watch_history_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+
+    // 启动动画
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我的'), centerTitle: true, elevation: 0),
-      body: Consumer<AppState>(
-        builder: (context, appState, child) {
-          return ListView(
-            children: [
-              // 用户信息区域
-              Container(
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: Theme.of(context).brightness == Brightness.light
+              ? AppColors.backgroundGradient
+              : AppColors.darkBackgroundGradient,
+        ),
+        child: SafeArea(
+          child: Consumer<AppState>(
+            builder: (context, appState, child) {
+              return FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.spacingLG,
                     ),
-                  ],
-                ),
-                child: InkWell(
-                  onTap: () => _handleUserInfoTap(context, appState),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Row(
                     children: [
-                      // 用户头像
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(30),
+                      const SizedBox(height: AppDimensions.spacingLG),
+
+                      // 用户信息卡片
+                      _buildUserInfoCard(appState),
+
+                      const SizedBox(height: AppDimensions.spacingXL),
+
+                      // 功能菜单
+                      _buildMenuSection(appState),
+
+                      // 登出按钮
+                      if (appState.isLoggedIn) ...[
+                        const SizedBox(height: AppDimensions.spacing3XL),
+                        _buildLogoutButton(appState),
+                        const SizedBox(height: AppDimensions.spacingXL),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.primary.withOpacity(0.1), Colors.transparent],
+          ),
+        ),
+      ),
+      title: Text(
+        '我的',
+        style: AppTextStyles.withPrimary(AppTextStyles.headingSM),
+      ),
+      centerTitle: true,
+    );
+  }
+
+  Widget _buildUserInfoCard(AppState appState) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spacingXL),
+      decoration: BoxDecoration(
+        gradient: appState.isLoggedIn
+            ? AppColors.primaryGradient
+            : LinearGradient(
+                colors: [
+                  AppColors.surfaceWithOpacity(0.9),
+                  AppColors.surfaceWithOpacity(0.7),
+                ],
+              ),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        boxShadow: AppShadows.large,
+      ),
+      child: InkWell(
+        onTap: () => _handleUserInfoTap(context, appState),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        child: Row(
+          children: [
+            // 头像
+            _buildAvatar(appState),
+
+            const SizedBox(width: AppDimensions.spacingLG),
+
+            // 用户信息
+            Expanded(child: _buildUserInfo(appState)),
+
+            // 箭头图标
+            Container(
+              padding: const EdgeInsets.all(AppDimensions.spacingSM),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+              ),
+              child: Icon(
+                appState.isLoggedIn
+                    ? Icons.edit_rounded
+                    : Icons.arrow_forward_ios_rounded,
+                size: AppDimensions.iconSizeMedium,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar(AppState appState) {
+    return Container(
+      width: AppDimensions.avatarSizeXLarge,
+      height: AppDimensions.avatarSizeXLarge,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+        boxShadow: AppShadows.medium,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
+        child: appState.currentUser?.userAvatar != null
+            ? Image.network(
+                appState.currentUser!.userAvatar!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildAvatarPlaceholder(),
+              )
+            : _buildAvatarPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.3),
+            Colors.white.withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: const Icon(Icons.person_rounded, size: 36, color: Colors.white),
+    );
+  }
+
+  Widget _buildUserInfo(AppState appState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          appState.isLoggedIn ? appState.currentUser!.displayName : '未登录用户',
+          style: AppTextStyles.withColor(AppTextStyles.headingXS, Colors.white),
+        ),
+        const SizedBox(height: AppDimensions.spacingXS),
+        Text(
+          appState.isLoggedIn
+              ? appState.currentUser!.userProfile ?? '这个人很懒，什么都没留下'
+              : '点击登录享受更多功能',
+          style: AppTextStyles.withColor(
+            AppTextStyles.bodyMedium,
+            Colors.white.withOpacity(0.8),
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuSection(AppState appState) {
+    final menuItems = [
+      {
+        'icon': Icons.history_rounded,
+        'title': '观看历史',
+        'subtitle': '查看最近观看的剧集',
+        'action': () =>
+            _navigateToPage(context, appState, const WatchHistoryPage()),
+      },
+      {
+        'icon': Icons.favorite_rounded,
+        'title': '我的收藏',
+        'subtitle': '收藏的精彩剧集',
+        'action': () =>
+            _navigateToPage(context, appState, const FavoritesPage()),
+      },
+      {
+        'icon': Icons.download_rounded,
+        'title': '离线下载',
+        'subtitle': '已下载的剧集',
+        'action': () => _showComingSoon(context, '下载功能开发中...'),
+      },
+      {
+        'icon': Icons.settings_rounded,
+        'title': '设置',
+        'subtitle': '应用设置和偏好',
+        'action': () => _showComingSoon(context, '设置功能开发中...'),
+      },
+      {
+        'icon': Icons.help_outline_rounded,
+        'title': '帮助与反馈',
+        'subtitle': '使用帮助和问题反馈',
+        'action': () => _showComingSoon(context, '帮助功能开发中...'),
+      },
+    ];
+
+    return Column(
+      children: menuItems.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+
+        return AnimatedContainer(
+          duration: Duration(milliseconds: 200 + (index * 100)),
+          margin: const EdgeInsets.only(bottom: AppDimensions.spacingMD),
+          child: _buildMenuItem(
+            context,
+            icon: item['icon'] as IconData,
+            title: item['title'] as String,
+            subtitle: item['subtitle'] as String,
+            onTap: item['action'] as VoidCallback,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+        boxShadow: AppShadows.small,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.spacingLG),
+            child: Row(
+              children: [
+                // 图标容器
+                Container(
+                  width: AppDimensions.avatarSizeMedium,
+                  height: AppDimensions.avatarSizeMedium,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient.scale(0.3),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: AppColors.primary,
+                    size: AppDimensions.iconSizeMedium,
+                  ),
+                ),
+
+                const SizedBox(width: AppDimensions.spacingLG),
+
+                // 文本信息
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: appState.currentUser?.userAvatar != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(30),
-                                child: Image.network(
-                                  appState.currentUser!.userAvatar!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      size: 30,
-                                      color: Colors.white,
-                                    );
-                                  },
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                size: 30,
-                                color: Colors.white,
-                              ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              appState.isLoggedIn
-                                  ? appState.currentUser!.displayName
-                                  : '未登录用户',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              appState.isLoggedIn
-                                  ? appState.currentUser!.userProfile ??
-                                        '这个人很懒，什么都没留下'
-                                  : '点击登录享受更多功能',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: AppDimensions.spacingXXS),
+                      Text(
+                        subtitle,
+                        style: AppTextStyles.withColor(
+                          AppTextStyles.bodySmall,
+                          Theme.of(
+                            context,
+                          ).textTheme.bodyMedium!.color!.withOpacity(0.7),
                         ),
-                      ),
-                      Icon(
-                        appState.isLoggedIn
-                            ? Icons.edit
-                            : Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.grey,
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 8),
-
-              // 功能列表
-              _buildMenuItem(
-                context,
-                icon: Icons.history,
-                title: '观看历史',
-                subtitle: '查看最近观看的剧集',
-                onTap: () => _navigateToPage(
-                  context,
-                  appState,
-                  const WatchHistoryPage(),
+                // 箭头
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: AppDimensions.iconSizeSmall,
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium!.color!.withOpacity(0.4),
                 ),
-              ),
-
-              _buildMenuItem(
-                context,
-                icon: Icons.favorite,
-                title: '我的收藏',
-                subtitle: '收藏的精彩剧集',
-                onTap: () =>
-                    _navigateToPage(context, appState, const FavoritesPage()),
-              ),
-
-              _buildMenuItem(
-                context,
-                icon: Icons.download,
-                title: '离线下载',
-                subtitle: '已下载的剧集',
-                onTap: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('下载功能开发中...')));
-                },
-              ),
-
-              _buildMenuItem(
-                context,
-                icon: Icons.settings,
-                title: '设置',
-                subtitle: '应用设置和偏好',
-                onTap: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('设置功能开发中...')));
-                },
-              ),
-
-              _buildMenuItem(
-                context,
-                icon: Icons.help_outline,
-                title: '帮助与反馈',
-                subtitle: '使用帮助和问题反馈',
-                onTap: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('帮助功能开发中...')));
-                },
-              ),
-
-              // 登出按钮（仅登录时显示）
-              if (appState.isLoggedIn) ...[
-                const SizedBox(height: 20),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ElevatedButton(
-                    onPressed: appState.isLoading
-                        ? null
-                        : () => _handleLogout(context, appState),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[50],
-                      foregroundColor: Colors.red,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.red[200]!),
-                      ),
-                    ),
-                    child: appState.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('登出', style: TextStyle(fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(height: 20),
               ],
-            ],
-          );
-        },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(AppState appState) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+        boxShadow: AppShadows.errorGlow(opacity: 0.2),
+      ),
+      child: ElevatedButton(
+        onPressed: appState.isLoading
+            ? null
+            : () => _handleLogout(context, appState),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.error.withOpacity(0.1),
+          foregroundColor: AppColors.error,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(
+            vertical: AppDimensions.spacingLG,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+            side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+          ),
+        ),
+        child: appState.isLoading
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.error,
+                ),
+              )
+            : Text(
+                '登出',
+                style: AppTextStyles.buttonLarge.copyWith(
+                  color: AppColors.error,
+                ),
+              ),
+      ),
+    );
+  }
+
+  // 显示"功能开发中"提示
+  void _showComingSoon(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        ),
       ),
     );
   }
@@ -207,26 +431,28 @@ class ProfilePage extends StatelessWidget {
   /// 处理用户信息区域点击
   void _handleUserInfoTap(BuildContext context, AppState appState) {
     if (!appState.isLoggedIn) {
-      // 未登录，跳转到登录页面
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     } else {
-      // 已登录，跳转到用户信息编辑页面（待实现）
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('用户信息编辑功能开发中...')));
+      _showComingSoon(context, '用户信息编辑功能开发中...');
     }
   }
 
   /// 导航到指定页面（需要登录）
   void _navigateToPage(BuildContext context, AppState appState, Widget page) {
     if (!appState.isLoggedIn) {
-      // 未登录，提示用户登录
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先登录')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请先登录'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          ),
+        ),
+      );
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -242,16 +468,37 @@ class ProfilePage extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认登出'),
-        content: const Text('确定要登出当前账号吗？'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+        ),
+        title: Text('确认登出', style: AppTextStyles.headingXS),
+        content: Text('确定要登出当前账号吗？', style: AppTextStyles.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(
+              '取消',
+              style: AppTextStyles.withColor(
+                AppTextStyles.buttonMedium,
+                AppColors.primary,
+              ),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              ),
+            ),
+            child: Text(
+              '确定',
+              style: AppTextStyles.withColor(
+                AppTextStyles.buttonMedium,
+                Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -260,59 +507,17 @@ class ProfilePage extends StatelessWidget {
     if (confirmed == true) {
       await appState.logout();
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已成功登出')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('已成功登出'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+            ),
+          ),
+        );
       }
     }
-  }
-
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: Theme.of(context).primaryColor, size: 20),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Colors.grey,
-        ),
-        onTap: onTap,
-      ),
-    );
   }
 }
