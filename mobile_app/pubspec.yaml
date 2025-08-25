@@ -42,6 +42,8 @@ dependencies:
   dio: ^5.9.0
   dio_cookie_manager: ^3.3.0
   path_provider: ^2.1.5
+  google_fonts: ^6.3.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:

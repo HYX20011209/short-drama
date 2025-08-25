@@ -8,6 +8,10 @@ import '../../models/enhanced_video.dart';
 import '../../providers/app_state.dart';
 import '../../services/video_service.dart';
 import '../../services/watch_history_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_dimensions.dart';
+import '../../theme/app_shadows.dart';
+import '../../theme/app_text_styles.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final int? dramaId; // 可选的剧集ID
@@ -35,15 +39,15 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   // 播放速度相关
   static const double _normalSpeed = 1.0;
   static const double _fastSpeed = 3.0;
-  
+
   // 分页相关
   static const int _defaultPageSize = 10;
   static const int _loadMoreThreshold = 3; // 剩余3条时加载更多
-  
+
   // 预加载相关
   static const int _preloadNextCount = 1; // 预加载下1条
   static const int _disposeBeforeCount = 2; // 提前2条释放资源
-  
+
   // 进度保存相关
   static const int _progressSaveInterval = 5; // 每5秒保存一次进度
   static const int _minProgressDiff = 3; // 进度变化超过3秒才保存
@@ -51,17 +55,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   static const int _startSaveThreshold = 3; // 开始3秒内不保存（秒）
   static const int _endSaveThreshold = 10; // 结束前10秒不保存（秒）
   static const int _minPositionForSave = 3; // 播放超过3秒才保存（秒）
-  
+
   // 进度恢复相关
   static const int _defaultMinResumeSeconds = 10; // 默认最小恢复阈值（秒）
   static const int _defaultTailGuardSeconds = 30; // 默认尾部保护（秒）
   static const int _aggressiveMinResumeSeconds = 1; // 激进恢复阈值（秒）
   static const int _aggressiveTailGuardSeconds = 5; // 激进尾部保护（秒）
-  
+
   // 视频初始化相关
   static const int _maxInitAttempts = 50; // 最多等待初始化次数
   static const int _initCheckIntervalMs = 100; // 初始化检查间隔（毫秒）
-  
+
   // UI相关
   static const double _playButtonSize = 72.0;
   static const double _backButtonSize = 28.0;
@@ -73,7 +77,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   static const double _backButtonLeftMargin = 16.0;
   static const double _backButtonOpacity = 0.5;
   static const double _backButtonRadius = 20.0;
-  
+
   // 每个视频期望的速度（默认 1.0），以及当前长按的视频 id
   final Map<int, double> _desiredSpeed = {};
   int? _longPressVideoId;
@@ -277,7 +281,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.playerBackground,
+      extendBodyBehindAppBar: true, // 沉浸式设计
       body: Stack(
         children: [
           // 主要播放器界面
@@ -288,8 +293,33 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
             itemCount: _items.length == 0 ? 1 : _items.length,
             itemBuilder: (context, index) {
               if (_items.isEmpty) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppDimensions.spacingLG),
+                        decoration: BoxDecoration(
+                          color: AppColors.overlayColor(0.3),
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusFull,
+                          ),
+                        ),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryLight,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.spacingLG),
+                      Text(
+                        '正在加载精彩内容...',
+                        style: AppTextStyles.withColor(
+                          AppTextStyles.bodyMedium,
+                          Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
               final item = _items[index];
@@ -304,6 +334,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
+                    // 视频播放器
                     if (c != null && c.value.isInitialized)
                       FittedBox(
                         fit: BoxFit.cover,
@@ -314,29 +345,121 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                         ),
                       )
                     else
-                      const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      ),
-
-                    // 只在用户主动暂停时显示播放按钮
-                    if (c != null && c.value.isInitialized && isUserPaused)
-                      const Center(
-                        child: Icon(
-                          Icons.play_arrow,
-                          size: _playButtonSize,
-                          color: Colors.white70,
+                      Container(
+                        color: AppColors.playerBackground,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(
+                                  AppDimensions.spacingLG,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.overlayColor(0.3),
+                                  borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusFull,
+                                  ),
+                                ),
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primaryLight,
+                                  strokeWidth: 3,
+                                ),
+                              ),
+                              const SizedBox(height: AppDimensions.spacingLG),
+                              Text(
+                                '正在准备播放...',
+                                style: AppTextStyles.withColor(
+                                  AppTextStyles.bodyMedium,
+                                  Colors.white.withOpacity(0.8),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 
+                    // 暂停时的播放按钮
+                    if (c != null && c.value.isInitialized && isUserPaused)
+                      Center(
+                        child: Container(
+                          width: _playButtonSize,
+                          height: _playButtonSize,
+                          decoration: BoxDecoration(
+                            color: AppColors.overlayColor(0.8),
+                            borderRadius: BorderRadius.circular(
+                              AppDimensions.radiusFull,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 2,
+                            ),
+                            boxShadow: AppShadows.large,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            size: 36,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
+                    // 视频标题和信息
                     Positioned(
                       left: _titleLeftMargin,
                       bottom: _titleBottomMargin,
                       right: _titleRightMargin,
-                      child: Text(
-                        item.title ?? '',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: _titleFontSize,
+                      child: Container(
+                        padding: const EdgeInsets.all(AppDimensions.spacingMD),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              AppColors.playerOverlay,
+                              Colors.transparent,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.radiusMD,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (item.title != null && item.title!.isNotEmpty)
+                              Text(
+                                item.title!,
+                                style: AppTextStyles.playerTitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (widget.dramaId != null) ...[
+                              const SizedBox(height: AppDimensions.spacingXS),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppDimensions.spacingSM,
+                                  vertical: AppDimensions.spacingXXS,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight.withOpacity(
+                                    0.9,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusXS,
+                                  ),
+                                ),
+                                child: Text(
+                                  '第${_getEpisodeNumber(item) ?? '?'}集',
+                                  style: AppTextStyles.withColor(
+                                    AppTextStyles.labelSmall,
+                                    Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),
@@ -353,12 +476,17 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
               left: _backButtonLeftMargin,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(_backButtonOpacity),
+                  color: AppColors.overlayColor(0.7),
                   borderRadius: BorderRadius.circular(_backButtonRadius),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                  boxShadow: AppShadows.medium,
                 ),
                 child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
                     color: Colors.white,
                     size: _backButtonSize,
                   ),
@@ -410,7 +538,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     if (duration < _minVideoDurationForSave) return false;
 
     // 刚开始的3秒和最后10秒不保存
-    if (currentPosition < _startSaveThreshold || currentPosition > duration - _endSaveThreshold) return false;
+    if (currentPosition < _startSaveThreshold ||
+        currentPosition > duration - _endSaveThreshold)
+      return false;
 
     // 检查进度变化是否足够大
     final lastSaved = _lastSavedProgress[videoId] ?? 0;
@@ -489,8 +619,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       );
 
       final aggressive = widget.dramaId != null && widget.startEpisode != null;
-      final minResumeSec = aggressive ? _aggressiveMinResumeSeconds : _defaultMinResumeSeconds;
-      final tailGuardSec = aggressive ? _aggressiveTailGuardSeconds : _defaultTailGuardSeconds;
+      final minResumeSec = aggressive
+          ? _aggressiveMinResumeSeconds
+          : _defaultMinResumeSeconds;
+      final tailGuardSec = aggressive
+          ? _aggressiveTailGuardSeconds
+          : _defaultTailGuardSeconds;
 
       if (lastProgress > minResumeSec) {
         final duration = controller.value.duration.inSeconds;

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+
 import '../../models/drama.dart';
 import '../../services/drama_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_dimensions.dart';
+import '../../theme/app_text_styles.dart';
+import '../../widgets/custom_page_transitions.dart';
 import '../../widgets/drama_card.dart';
-import '../../widgets/loading_widget.dart';
 import '../../widgets/error_widget.dart';
+import '../../widgets/loading_widget.dart';
 import '../drama_detail/drama_detail_page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -18,12 +23,12 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  
+
   List<Drama> searchResults = [];
   bool isLoading = false;
   String? errorMessage;
   bool hasSearched = false;
-  
+
   // 搜索历史记录（简单的内存存储，后续可改为本地存储）
   List<String> searchHistory = [];
 
@@ -58,7 +63,7 @@ class _SearchPageState extends State<SearchPage> {
 
     try {
       final results = await DramaService.searchDramas(query.trim());
-      
+
       // 添加到搜索历史
       if (!searchHistory.contains(query.trim())) {
         searchHistory.insert(0, query.trim());
@@ -66,7 +71,7 @@ class _SearchPageState extends State<SearchPage> {
           searchHistory = searchHistory.take(10).toList();
         }
       }
-      
+
       setState(() {
         searchResults = results;
         isLoading = false;
@@ -98,55 +103,117 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spacingLG,
+        vertical: AppDimensions.spacingSM,
+      ),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _focusNode,
-              decoration: InputDecoration(
-                hintText: '搜索剧集...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            searchResults.clear();
-                            hasSearched = false;
-                          });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[200],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              onSubmitted: _onSearchSubmitted,
-              onChanged: (value) {
-                setState(() {}); // 更新UI以显示/隐藏清除按钮
-              },
+              child: TextField(
+                controller: _searchController,
+                focusNode: _focusNode,
+                decoration: InputDecoration(
+                  hintText: '搜索剧集...',
+                  hintStyle: AppTextStyles.withColor(
+                    AppTextStyles.bodyMedium,
+                    Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.primary,
+                    size: AppDimensions.iconSizeLarge,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(
+                              AppDimensions.radiusFull,
+                            ),
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() {
+                                searchResults.clear();
+                                hasSearched = false;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(
+                                AppDimensions.spacingSM,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.6),
+                                size: AppDimensions.iconSizeMedium,
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spacingLG,
+                    vertical: AppDimensions.spacingMD,
+                  ),
+                ),
+                style: AppTextStyles.bodyMedium,
+                onSubmitted: _onSearchSubmitted,
+                onChanged: (value) {
+                  setState(() {}); // 更新UI以显示/隐藏清除按钮
+                },
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: () {
-              _onSearchSubmitted(_searchController.text);
-            },
-            child: const Text('搜索'),
+          const SizedBox(width: AppDimensions.spacingMD),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                onTap: () => _onSearchSubmitted(_searchController.text),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spacingLG,
+                    vertical: AppDimensions.spacingMD,
+                  ),
+                  child: Text(
+                    '搜索',
+                    style: AppTextStyles.withColor(
+                      AppTextStyles.buttonMedium,
+                      Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // 在搜索结果的剧集卡片点击处添加转场动画
+  void _playDrama(Drama drama) {
+    Navigator.of(context).pushWithBottomSlide(DramaDetailPage(drama: drama));
   }
 
   Widget _buildSearchHistory() {
@@ -158,48 +225,90 @@ class _SearchPageState extends State<SearchPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spacingLG,
+            vertical: AppDimensions.spacingMD,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '搜索历史',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text('搜索历史', style: AppTextStyles.headingXS),
               TextButton(
                 onPressed: _clearHistory,
-                child: const Text('清空'),
+                child: Text(
+                  '清空',
+                  style: AppTextStyles.withColor(
+                    AppTextStyles.labelLarge,
+                    AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: searchHistory.map((query) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ActionChip(
-                label: Text(query),
-                onPressed: () => _onHistoryItemTap(query),
-                backgroundColor: Colors.grey[100],
-              ),
-            );
-          }).toList(),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.spacingLG,
+          ),
+          child: Wrap(
+            spacing: AppDimensions.spacingSM,
+            runSpacing: AppDimensions.spacingSM,
+            children: searchHistory.map((query) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _onHistoryItemTap(query),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.spacingMD,
+                      vertical: AppDimensions.spacingSM,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusFull,
+                      ),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.history_rounded,
+                          size: AppDimensions.iconSizeSmall,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        const SizedBox(width: AppDimensions.spacingXS),
+                        Text(
+                          query,
+                          style: AppTextStyles.labelMedium.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppDimensions.spacingLG),
       ],
     );
   }
 
   Widget _buildSearchResults() {
     if (isLoading) {
-      return const Expanded(
-        child: LoadingWidget(message: '搜索中...'),
-      );
+      return const Expanded(child: LoadingWidget(message: '搜索中...'));
     }
 
     if (errorMessage != null) {
@@ -217,18 +326,11 @@ class _SearchPageState extends State<SearchPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.search,
-                size: 64,
-                color: Colors.grey[400],
-              ),
+              Icon(Icons.search, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
                 '输入关键词搜索剧集',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -242,11 +344,7 @@ class _SearchPageState extends State<SearchPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.search_off,
-                size: 64,
-                color: Colors.grey,
-              ),
+              Icon(Icons.search_off, size: 64, color: Colors.grey),
               SizedBox(height: 16),
               Text(
                 '未找到相关剧集',
@@ -279,21 +377,13 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _navigateToDramaDetail(Drama drama) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DramaDetailPage(drama: drama),
-      ),
-    );
+    Navigator.of(context).pushWithBottomSlide(DramaDetailPage(drama: drama));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('搜索'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('搜索'), elevation: 0),
       body: Column(
         children: [
           _buildSearchBar(),
