@@ -2,210 +2,423 @@ import 'package:flutter/material.dart';
 
 import '../../models/drama.dart';
 import '../../services/favorite_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_dimensions.dart';
+import '../../theme/app_shadows.dart';
+import '../../theme/app_text_styles.dart';
+import '../../widgets/custom_page_transitions.dart';
 import '../player/video_player_page.dart';
 
-class DramaDetailPage extends StatelessWidget {
+class DramaDetailPage extends StatefulWidget {
   final Drama drama;
 
   const DramaDetailPage({Key? key, required this.drama}) : super(key: key);
 
   @override
+  State<DramaDetailPage> createState() => _DramaDetailPageState();
+}
+
+class _DramaDetailPageState extends State<DramaDetailPage>
+    with SingleTickerProviderStateMixin {
+  
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  
+  bool _isFavorite = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 简化动画
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _playEpisode(int episode) {
+    try {
+      final dramaId = int.parse(widget.drama.id);
+      Navigator.of(context).pushWithScale(
+        VideoPlayerPage(dramaId: dramaId, startEpisode: episode),
+      );
+    } catch (e) {
+      _showSnackBar('无效的剧集ID: ${widget.drama.id}');
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isLoading) return;
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final result = await FavoriteService.toggleFavorite(widget.drama.id);
+      if (result != null) {
+        setState(() => _isFavorite = result);
+        _showSnackBar(
+          result ? '已添加到收藏' : '已取消收藏',
+          isSuccess: true,
+        );
+      }
+    } catch (e) {
+      _showSnackBar('操作失败: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isSuccess = false}) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? AppColors.success : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cover = drama.coverUrl;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('剧集详情'), centerTitle: true),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 顶部封面
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: cover != null && cover.isNotEmpty
-                  ? Image.network(
-                      cover,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _coverPlaceholder(),
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return _coverPlaceholder();
-                      },
-                    )
-                  : _coverPlaceholder(),
-            ),
-
-            // 基本信息
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    drama.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (drama.category != null && drama.category!.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            drama.category!,
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '共${drama.totalEpisodes}集',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (drama.description != null &&
-                      drama.description!.isNotEmpty)
-                    Text(
-                      drama.description!,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
-                ],
-              ),
-            ),
-
-            // 操作区
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('立即播放'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      onPressed: () {
-                        try {
-                          final dramaId = int.parse(drama.id);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VideoPlayerPage(
-                                dramaId: dramaId,
-                                startEpisode: 1,
-                              ),
-                            ),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('无效的剧集ID: ${drama.id}')),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.favorite_border),
-                    label: const Text('收藏'),
-                    onPressed: () async {
-                      try {
-                        // TODO: 根据当前收藏状态显示不同图标
-                        final result = await FavoriteService.toggleFavorite(
-                          drama.id,
-                        );
-                        if (result != null) {
-                          final message = result ? '已添加到收藏' : '已取消收藏';
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(message)));
-                          }
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // 选集（占位，待后端完成 /drama/{id}/episodes 后接入）
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '选集（待接入）',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: List.generate(
-                  drama.totalEpisodes.clamp(0, 12), // 占位最多12个
-                  (i) => OutlinedButton(
-                    onPressed: () {
-                      try {
-                        final dramaId = int.parse(drama.id);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VideoPlayerPage(
-                              dramaId: dramaId,
-                              startEpisode: i + 1,
-                            ),
-                          ),
-                        );
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('无效的剧集ID: ${drama.id}')),
-                        );
-                      }
-                    },
-                    child: Text('第${i + 1}集'),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
+      appBar: AppBar(
+        title: Text(
+          '剧集详情',
+          style: AppTextStyles.headingSM,
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 顶部封面
+              _buildCoverSection(),
+              
+              // 基本信息
+              _buildInfoSection(),
+              
+              // 操作按钮
+              _buildActionButtons(),
+              
+              // 选集 - 关键：这里直接紧跟按钮，没有额外间距
+              _buildEpisodeSection(),
+              
+              // 底部间距
+              const SizedBox(height: AppDimensions.spacing3XL),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _coverPlaceholder() {
+  Widget _buildCoverSection() {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primary.withOpacity(0.1),
+              AppColors.secondary.withOpacity(0.1),
+            ],
+          ),
+        ),
+        child: widget.drama.coverUrl != null && widget.drama.coverUrl!.isNotEmpty
+            ? Image.network(
+                widget.drama.coverUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildCoverPlaceholder(),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return _buildCoverPlaceholder();
+                },
+              )
+            : _buildCoverPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Padding(
+      padding: const EdgeInsets.all(AppDimensions.spacingLG),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题
+          Text(
+            widget.drama.title,
+            style: AppTextStyles.headingMD,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          
+          const SizedBox(height: AppDimensions.spacingSM),
+          
+          // 标签和集数
+          Row(
+            children: [
+              if (widget.drama.category != null && widget.drama.category!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spacingMD,
+                    vertical: AppDimensions.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    widget.drama.category!,
+                    style: AppTextStyles.withColor(
+                      AppTextStyles.labelMedium,
+                      AppColors.primary,
+                    ),
+                  ),
+                ),
+              
+              const SizedBox(width: AppDimensions.spacingMD),
+              
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.spacingMD,
+                  vertical: AppDimensions.spacingXS,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  '共${widget.drama.totalEpisodes}集',
+                  style: AppTextStyles.labelMedium,
+                ),
+              ),
+            ],
+          ),
+          
+          // 描述
+          if (widget.drama.description != null && widget.drama.description!.isNotEmpty) ...[
+            const SizedBox(height: AppDimensions.spacingMD),
+            Text(
+              widget.drama.description!,
+              style: AppTextStyles.bodyMedium.copyWith(height: 1.5),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spacingLG),
+      child: Row(
+        children: [
+          // 播放按钮
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                boxShadow: AppShadows.primaryGlow(opacity: 0.3),
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () => _playEpisode(1),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: AppDimensions.spacingMD),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: Text(
+                  '立即播放',
+                  style: AppTextStyles.withColor(
+                    AppTextStyles.buttonMedium,
+                    Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: AppDimensions.spacingMD),
+          
+          // 收藏按钮
+          OutlinedButton.icon(
+            onPressed: _isLoading ? null : _toggleFavorite,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _isFavorite ? AppColors.error : AppColors.primary,
+              side: BorderSide(
+                color: _isFavorite ? AppColors.error : AppColors.primary,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppDimensions.spacingLG,
+                vertical: AppDimensions.spacingMD,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              ),
+            ),
+            icon: _isLoading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : Icon(
+                    _isFavorite 
+                        ? Icons.favorite_rounded 
+                        : Icons.favorite_border_rounded,
+                    size: 16,
+                  ),
+            label: Text(
+              _isFavorite ? '已收藏' : '收藏',
+              style: AppTextStyles.labelMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeSection() {
+    return Padding(
+      // 关键修改：减少顶部padding，让"选集"更靠近按钮
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.spacingLG,
+        AppDimensions.spacingSM, // 只有8px的顶部间距
+        AppDimensions.spacingLG,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('选集', style: AppTextStyles.headingXS),
+          
+          // 关键修改：选集标题和按钮之间只有4px间距
+          const SizedBox(height: 4.0),
+          
+          // 选集网格
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              childAspectRatio: 2.5,
+              crossAxisSpacing: AppDimensions.spacingMD,
+              mainAxisSpacing: AppDimensions.spacingMD,
+            ),
+            itemCount: widget.drama.totalEpisodes.clamp(0, 24),
+            itemBuilder: (context, index) {
+              final episode = index + 1;
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _playEpisode(episode),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '第$episode集',
+                        style: AppTextStyles.labelMedium,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverPlaceholder() {
     return Container(
-      color: Colors.grey[200],
-      child: const Center(
-        child: Icon(Icons.movie, size: 48, color: Colors.grey),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.3),
+            AppColors.secondary.withOpacity(0.3),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.movie_creation_outlined,
+              size: 48,
+              color: Colors.white.withOpacity(0.8),
+            ),
+            const SizedBox(height: AppDimensions.spacingSM),
+            Text(
+              '短剧封面',
+              style: AppTextStyles.withColor(
+                AppTextStyles.bodyMedium,
+                Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
