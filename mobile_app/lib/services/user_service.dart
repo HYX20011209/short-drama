@@ -106,4 +106,23 @@ class UserService {
       progress: progress,
     );
   }
+
+  /// 更新个人信息
+  static Future<bool> updateUserProfile({
+    String? userName,
+    String? userProfile,
+    String? userPassword,
+  }) async {
+    try {
+      final response = await ApiService.updateUserProfile(
+        userName: userName,
+        userProfile: userProfile,
+        userPassword: userPassword,
+      );
+
+      return response != null && response['code'] == 0;
+    } catch (e) {
+      throw Exception('更新个人信息失败: $e');
+    }
+  }
 }

@@ -35,6 +35,20 @@ class ApiService {
     return await NetworkHelper.get('/user/get/login');
   }
 
+  /// 更新个人信息
+  static Future<Map<String, dynamic>?> updateUserProfile({
+    String? userName,
+    String? userProfile,
+    String? userPassword,
+  }) async {
+    final Map<String, dynamic> body = {};
+    if (userName != null) body['userName'] = userName;
+    if (userProfile != null) body['userProfile'] = userProfile;
+    if (userPassword != null) body['userPassword'] = userPassword;
+
+    return await NetworkHelper.post('/user/update/my', body);
+  }
+
   // ==================== 观看历史相关接口 ====================
 
   /// 获取观看历史列表

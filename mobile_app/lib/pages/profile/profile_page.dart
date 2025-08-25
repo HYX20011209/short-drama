@@ -8,6 +8,7 @@ import '../../theme/app_shadows.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/custom_page_transitions.dart';
 import '../auth/login_page.dart';
+import 'edit_profile_page.dart';
 import 'favorites_page.dart';
 import 'watch_history_page.dart';
 
@@ -434,7 +435,28 @@ class _ProfilePageState extends State<ProfilePage>
     if (!appState.isLoggedIn) {
       Navigator.of(context).pushWithSlideAndFade(const LoginPage());
     } else {
-      _showComingSoon(context, '用户信息编辑功能开发中...');
+      _navigateToEditProfile(context);
+    }
+  }
+
+  /// 导航到编辑个人信息页面
+  Future<void> _navigateToEditProfile(BuildContext context) async {
+    final result = await Navigator.of(
+      context,
+    ).pushWithSlideAndFade(const EditProfilePage());
+
+    // 如果编辑成功，显示成功提示
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('个人信息已更新'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          ),
+        ),
+      );
     }
   }
 
