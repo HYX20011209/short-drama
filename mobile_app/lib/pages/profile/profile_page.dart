@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
 import '../../theme/app_shadows.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/custom_page_transitions.dart';
 import '../auth/login_page.dart';
 import 'favorites_page.dart';
 import 'watch_history_page.dart';
@@ -431,10 +432,7 @@ class _ProfilePageState extends State<ProfilePage>
   /// 处理用户信息区域点击
   void _handleUserInfoTap(BuildContext context, AppState appState) {
     if (!appState.isLoggedIn) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+      Navigator.of(context).pushWithSlideAndFade(const LoginPage());
     } else {
       _showComingSoon(context, '用户信息编辑功能开发中...');
     }
@@ -453,14 +451,11 @@ class _ProfilePageState extends State<ProfilePage>
           ),
         ),
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+      Navigator.of(context).pushWithSlideAndFade(const LoginPage());
       return;
     }
 
-    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+    Navigator.of(context).pushWithSlideAndFade(page);
   }
 
   /// 处理登出

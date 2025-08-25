@@ -186,6 +186,7 @@ class _DramaCardState extends State<DramaCard>
           const SizedBox(height: AppDimensions.spacingXS),
 
           // 底部信息行
+          // 底部信息行
           Row(
             children: [
               // 集数信息
@@ -204,34 +205,37 @@ class _DramaCardState extends State<DramaCard>
                 ),
               ),
 
-              const SizedBox(width: AppDimensions.spacingSM),
-
-              // 分类标签
+              // 分类标签 - 修改：使用更优雅的小标签设计
               if (widget.drama.category != null &&
-                  widget.drama.category!.isNotEmpty)
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.spacingSM,
-                      vertical: AppDimensions.spacingXXS,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.secondaryGradient,
-                      borderRadius: BorderRadius.circular(
-                        AppDimensions.radiusXS,
-                      ),
-                    ),
-                    child: Text(
-                      widget.drama.category!,
-                      style: AppTextStyles.withColor(
-                        AppTextStyles.categoryTag,
-                        Colors.white,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  widget.drama.category!.isNotEmpty) ...[
+                const SizedBox(width: AppDimensions.spacingSM),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.spacingSM,
+                    vertical: AppDimensions.spacingXXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
+                    border: Border.all(
+                      color: AppColors.secondary.withOpacity(0.3),
+                      width: 0.5,
                     ),
                   ),
+                  child: Text(
+                    widget.drama.category!,
+                    style: AppTextStyles.withColor(
+                      AppTextStyles.labelSmall,
+                      AppColors.secondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+              ],
+
+              // 添加弹性空间，让标签靠左对齐
+              const Spacer(),
             ],
           ),
         ],

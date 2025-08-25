@@ -5,6 +5,7 @@ import '../../services/drama_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/custom_page_transitions.dart';
 import '../../widgets/drama_card.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/loading_widget.dart';
@@ -122,10 +123,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _playDrama(Drama drama) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DramaDetailPage(drama: drama)),
-    );
+    Navigator.of(context).pushWithBottomSlide(DramaDetailPage(drama: drama));
   }
 
   @override
@@ -194,10 +192,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 size: AppDimensions.iconSizeLarge,
               ),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SearchPage()),
-                );
+                Navigator.of(context).pushWithSearch(const SearchPage());
               },
             ),
           ),

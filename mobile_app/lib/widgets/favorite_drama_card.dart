@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/drama.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_dimensions.dart';
+import '../theme/app_text_styles.dart';
 
 class FavoriteDramaCard extends StatelessWidget {
   final Drama drama;
@@ -64,47 +67,65 @@ class FavoriteDramaCard extends StatelessWidget {
                 Expanded(
                   flex: 1,
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(AppDimensions.spacingSM), // 减少padding从12px到8px
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // 改为spaceBetween确保布局稳定
                       children: [
                         Text(
                           drama.title,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: AppTextStyles.dramaTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        // 去掉SizedBox，使用spaceBetween自动分配空间
                         Row(
                           children: [
-                            Text(
-                              '共${drama.totalEpisodes}集',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppDimensions.spacingSM,
+                                vertical: AppDimensions.spacingXXS,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(
+                                  AppDimensions.radiusXS,
+                                ),
+                              ),
+                              child: Text(
+                                '${drama.totalEpisodes}集',
+                                style: AppTextStyles.withPrimary(
+                                  AppTextStyles.labelSmall,
+                                ),
                               ),
                             ),
                             if (drama.category != null &&
                                 drama.category!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  drama.category!,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.blue[800],
+                              const SizedBox(width: AppDimensions.spacingSM),
+                              Flexible( // 使用Flexible替代固定Container，防止溢出
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppDimensions.spacingSM,
+                                    vertical: AppDimensions.spacingXXS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(
+                                      AppDimensions.radiusXS,
+                                    ),
+                                    border: Border.all(
+                                      color: AppColors.secondary.withOpacity(0.3),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    drama.category!,
+                                    style: AppTextStyles.withColor(
+                                      AppTextStyles.labelSmall,
+                                      AppColors.secondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
