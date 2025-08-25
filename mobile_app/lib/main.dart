@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'pages/main_tab_page.dart';
 import 'providers/app_state.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,10 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: '短剧',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+        // 使用新的主题系统
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system, // 跟随系统主题
         home: const AppInitializer(),
       ),
     );
