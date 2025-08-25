@@ -79,7 +79,7 @@ class _SearchPageState extends State<SearchPage> {
     } catch (e) {
       setState(() {
         isLoading = false;
-        errorMessage = '搜索失败: $e';
+        errorMessage = 'Search failed: $e';
       });
     }
   }
@@ -126,7 +126,7 @@ class _SearchPageState extends State<SearchPage> {
                 controller: _searchController,
                 focusNode: _focusNode,
                 decoration: InputDecoration(
-                  hintText: '搜索剧集...',
+                  hintText: 'Search dramas...',
                   hintStyle: AppTextStyles.withColor(
                     AppTextStyles.bodyMedium,
                     Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -196,7 +196,7 @@ class _SearchPageState extends State<SearchPage> {
                     vertical: AppDimensions.spacingMD,
                   ),
                   child: Text(
-                    '搜索',
+                    'Search',
                     style: AppTextStyles.withColor(
                       AppTextStyles.buttonMedium,
                       Colors.white,
@@ -232,11 +232,11 @@ class _SearchPageState extends State<SearchPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('搜索历史', style: AppTextStyles.headingXS),
+              Text('Search History', style: AppTextStyles.headingXS),
               TextButton(
                 onPressed: _clearHistory,
                 child: Text(
-                  '清空',
+                  'Clear',
                   style: AppTextStyles.withColor(
                     AppTextStyles.labelLarge,
                     AppColors.primary,
@@ -308,7 +308,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildSearchResults() {
     if (isLoading) {
-      return const Expanded(child: LoadingWidget(message: '搜索中...'));
+      return const Expanded(child: LoadingWidget(message: 'Searching...'));
     }
 
     if (errorMessage != null) {
@@ -329,7 +329,7 @@ class _SearchPageState extends State<SearchPage> {
               Icon(Icons.search, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
-                '输入关键词搜索剧集',
+                'Enter keywords to search dramas',
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
             ],
@@ -347,7 +347,7 @@ class _SearchPageState extends State<SearchPage> {
               Icon(Icons.search_off, size: 64, color: Colors.grey),
               SizedBox(height: 16),
               Text(
-                '未找到相关剧集',
+                'No results found',
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             ],

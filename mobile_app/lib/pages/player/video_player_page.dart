@@ -312,7 +312,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                       ),
                       const SizedBox(height: AppDimensions.spacingLG),
                       Text(
-                        '正在加载精彩内容...',
+                        'loading...',
                         style: AppTextStyles.withColor(
                           AppTextStyles.bodyMedium,
                           Colors.white.withOpacity(0.8),
@@ -368,7 +368,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                               ),
                               const SizedBox(height: AppDimensions.spacingLG),
                               Text(
-                                '正在准备播放...',
+                                'Preparing...',
                                 style: AppTextStyles.withColor(
                                   AppTextStyles.bodyMedium,
                                   Colors.white.withOpacity(0.8),
@@ -451,7 +451,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                                   ),
                                 ),
                                 child: Text(
-                                  '第${_getEpisodeNumber(item) ?? '?'}集',
+                                  'Episode ${_getEpisodeNumber(item) ?? '?'}',
                                   style: AppTextStyles.withColor(
                                     AppTextStyles.labelSmall,
                                     Colors.white,
@@ -633,7 +633,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('已恢复到 ${_formatDuration(lastProgress)} 处继续播放'),
+                content: Text('Resumed at ${_formatDuration(lastProgress)}'),
                 duration: Duration(seconds: 2),
                 backgroundColor: Colors.black54,
               ),
