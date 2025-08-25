@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => AppState(),
       child: MaterialApp(
-        title: '短剧',
+        title: 'Drama Series',
         debugShowCheckedModeBanner: false,
         // 使用新的主题系统
         theme: AppTheme.lightTheme,
@@ -62,7 +62,7 @@ class _AppInitializerState extends State<AppInitializer> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('正在初始化...'),
+                  Text('Initializing...'),
                 ],
               ),
             ),

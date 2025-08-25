@@ -84,10 +84,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       final result = await DramaService.getCategories();
       setState(() {
-        categories = ['全部', ...result];
+        categories = ['All', ...result];
       });
     } catch (e) {
-      print('加载分类失败: $e');
+      print('Load categories error: $e');
     }
   }
 
@@ -99,7 +99,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     try {
       final result = await DramaService.getDramaList(
-        category: selectedCategory == '全部' ? null : selectedCategory,
+        category: selectedCategory == 'All' ? null : selectedCategory,
       );
       setState(() {
         dramas = result;
@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } catch (e) {
       setState(() {
         loading = false;
-        errorMessage = '加载失败: $e';
+        errorMessage = 'Load error: $e';
       });
     }
   }
@@ -171,7 +171,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       title: FadeTransition(
         opacity: _fadeAnimation,
         child: Text(
-          '短剧',
+          'Drama Series',
           style: AppTextStyles.withPrimary(AppTextStyles.headingSM),
         ),
       ),
@@ -302,7 +302,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
               const SizedBox(height: AppDimensions.spacingLG),
               Text(
-                '暂无剧集',
+                'No dramas found',
                 style: AppTextStyles.withColor(
                   AppTextStyles.bodyLarge,
                   AppColors.primary.withOpacity(0.6),

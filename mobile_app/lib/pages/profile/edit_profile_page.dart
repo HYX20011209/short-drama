@@ -167,7 +167,7 @@ class _EditProfilePageState extends State<EditProfilePage>
         ),
       ),
       title: Text(
-        '编辑个人信息',
+        'Edit Profile',
         style: AppTextStyles.withPrimary(AppTextStyles.headingSM),
       ),
       centerTitle: true,
@@ -194,7 +194,7 @@ class _EditProfilePageState extends State<EditProfilePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '基本信息',
+            'Basic Information',
             style: AppTextStyles.headingXS.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -227,7 +227,7 @@ class _EditProfilePageState extends State<EditProfilePage>
           Row(
             children: [
               Text(
-                '修改密码',
+                'Change Password',
                 style: AppTextStyles.headingXS.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -253,8 +253,8 @@ class _EditProfilePageState extends State<EditProfilePage>
     return TextFormField(
       controller: _userNameController,
       decoration: InputDecoration(
-        labelText: '昵称 *',
-        hintText: '请输入您的昵称',
+        labelText: 'Nickname *',
+        hintText: 'Enter your nickname',
         prefixIcon: Icon(
           Icons.person_outline_rounded,
           color: AppColors.primary,
@@ -271,10 +271,10 @@ class _EditProfilePageState extends State<EditProfilePage>
       maxLength: 20,
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
-          return '昵称不能为空';
+          return 'Nickname cannot be empty';
         }
         if (value.trim().length < 2) {
-          return '昵称至少需要2个字符';
+          return 'Nickname must be at least 2 characters';
         }
         return null;
       },
@@ -285,8 +285,8 @@ class _EditProfilePageState extends State<EditProfilePage>
     return TextFormField(
       controller: _userProfileController,
       decoration: InputDecoration(
-        labelText: '个人简介',
-        hintText: '请输入您的个人简介，留空将使用默认简介',
+        labelText: 'Bio',
+        hintText: 'Enter your bio, leave empty for default',
         prefixIcon: Icon(Icons.edit_note_rounded, color: AppColors.primary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
@@ -296,7 +296,7 @@ class _EditProfilePageState extends State<EditProfilePage>
           borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
         counterText: '${_userProfileController.text.length}/100',
-        helperText: '留空时将显示："这个人很懒，什么都没留下"',
+        helperText: 'Default: "No bio available"',
         helperStyle: AppTextStyles.withColor(
           AppTextStyles.caption,
           Colors.grey,
@@ -306,7 +306,7 @@ class _EditProfilePageState extends State<EditProfilePage>
       maxLength: 100,
       validator: (value) {
         if (value != null && value.length > 100) {
-          return '个人简介不能超过100个字符';
+          return 'Bio cannot exceed 100 characters';
         }
         return null;
       },
@@ -318,8 +318,8 @@ class _EditProfilePageState extends State<EditProfilePage>
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
       decoration: InputDecoration(
-        labelText: '新密码',
-        hintText: '请输入新密码，留空则不修改',
+        labelText: 'New Password',
+        hintText: 'Enter new password, leave empty to keep current',
         prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.primary),
         suffixIcon: IconButton(
           onPressed: () {
@@ -346,7 +346,7 @@ class _EditProfilePageState extends State<EditProfilePage>
         // 如果输入了密码，则验证长度
         if (value != null && value.isNotEmpty) {
           if (value.length < 8) {
-            return '密码至少需要8个字符';
+            return 'Password must be at least 8 characters';
           }
         }
         return null;
@@ -359,8 +359,8 @@ class _EditProfilePageState extends State<EditProfilePage>
       controller: _confirmPasswordController,
       obscureText: !_isConfirmPasswordVisible,
       decoration: InputDecoration(
-        labelText: '确认新密码',
-        hintText: '请再次输入新密码',
+        labelText: 'Confirm New Password',
+        hintText: 'Enter new password again',
         prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.primary),
         suffixIcon: IconButton(
           onPressed: () {
@@ -387,10 +387,10 @@ class _EditProfilePageState extends State<EditProfilePage>
         // 如果输入了新密码，则确认密码也必须输入且一致
         if (_passwordController.text.isNotEmpty) {
           if (value == null || value.isEmpty) {
-            return '请确认新密码';
+            return 'Please confirm new password';
           }
           if (value != _passwordController.text) {
-            return '两次输入的密码不一致';
+            return 'Passwords do not match';
           }
         }
         return null;
@@ -430,7 +430,7 @@ class _EditProfilePageState extends State<EditProfilePage>
                 ),
               )
             : Text(
-                _hasChanges ? '保存修改' : '暂无修改',
+                _hasChanges ? 'Save Changes' : 'No Changes',
                 style: AppTextStyles.buttonLarge.copyWith(color: Colors.white),
               ),
       ),
@@ -447,13 +447,13 @@ class _EditProfilePageState extends State<EditProfilePage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
           ),
-          title: Text('确认离开', style: AppTextStyles.headingXS),
-          content: Text('您有未保存的修改，确定要离开吗？', style: AppTextStyles.bodyMedium),
+          title: Text('Confirm Exit', style: AppTextStyles.headingXS),
+          content: Text('You have unsaved changes. Are you sure you want to leave?', style: AppTextStyles.bodyMedium),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
-                '取消',
+                'Cancel',
                 style: AppTextStyles.withColor(
                   AppTextStyles.buttonMedium,
                   AppColors.primary,
@@ -472,7 +472,7 @@ class _EditProfilePageState extends State<EditProfilePage>
                 ),
               ),
               child: Text(
-                '离开',
+                'Leave',
                 style: AppTextStyles.withColor(
                   AppTextStyles.buttonMedium,
                   Colors.white,
@@ -520,7 +520,7 @@ class _EditProfilePageState extends State<EditProfilePage>
         if (appState.currentUser != null) {
           final updatedUser = appState.currentUser!.copyWith(
             userName: userName,
-            userProfile: userProfile ?? "这个人很懒，什么都没留下",
+            userProfile: userProfile ?? "No bio available",
           );
           await appState.updateUserInfo(updatedUser);
         }
@@ -528,7 +528,7 @@ class _EditProfilePageState extends State<EditProfilePage>
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('个人信息更新成功'),
+              content: const Text('Profile updated successfully'),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -539,14 +539,14 @@ class _EditProfilePageState extends State<EditProfilePage>
           Navigator.pop(context, true); // 返回并传递成功标志
         }
       } else {
-        throw Exception('更新失败');
+        throw Exception('Update failed');
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '更新失败: ${e.toString().replaceFirst('Exception: ', '')}',
+              'Update failed: ${e.toString().replaceFirst('Exception: ', '')}',
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,

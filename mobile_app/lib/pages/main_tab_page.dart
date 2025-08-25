@@ -116,19 +116,19 @@ class _MainTabPageState extends State<MainTabPage>
             _buildBottomNavItem(
               icon: Icons.home_rounded,
               activeIcon: Icons.home,
-              label: '首页',
+              label: 'Home',
               index: 0,
             ),
             _buildBottomNavItem(
               icon: Icons.play_circle_outline_rounded,
               activeIcon: Icons.play_circle_rounded,
-              label: '发现',
+              label: 'Explore',
               index: 1,
             ),
             _buildBottomNavItem(
               icon: Icons.person_outline_rounded,
               activeIcon: Icons.person_rounded,
-              label: '我的',
+              label: 'Profile',
               index: 2,
             ),
           ],
