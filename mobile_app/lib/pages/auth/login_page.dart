@@ -56,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '短剧',
+                      'Short Dramas',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
@@ -70,17 +70,17 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _accountController,
                       decoration: const InputDecoration(
-                        labelText: '用户账号',
-                        hintText: '请输入用户账号',
+                        labelText: 'Account',
+                        hintText: 'Enter your account',
                         prefixIcon: Icon(Icons.person),
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '请输入用户账号';
+                          return 'Please enter your account';
                         }
                         if (value.length < 4) {
-                          return '用户账号至少4位';
+                          return 'Account must be at least 4 characters';
                         }
                         return null;
                       },
@@ -92,8 +92,8 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: '密码',
-                        hintText: '请输入密码',
+                        labelText: 'Password',
+                        hintText: 'Enter your password',
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -109,10 +109,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return '请输入密码';
+                          return 'Please enter your password';
                         }
                         if (value.length < 8) {
-                          return '密码至少8位';
+                          return 'Password must be at least 8 characters';
                         }
                         return null;
                       },
@@ -125,8 +125,8 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _confirmPasswordController,
                         obscureText: _obscureConfirmPassword,
                         decoration: InputDecoration(
-                          labelText: '确认密码',
-                          hintText: '请再次输入密码',
+                          labelText: 'Confirm Password',
+                          hintText: 'Enter your password again',
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -143,10 +143,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return '请确认密码';
+                            return 'Please enter your password again';
                           }
                           if (value != _passwordController.text) {
-                            return '两次输入的密码不一致';
+                            return 'Passwords do not match';
                           }
                           return null;
                         },
@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              _isLoginMode ? '登录' : '注册',
+                              _isLoginMode ? 'login' : 'register',
                               style: const TextStyle(fontSize: 16),
                             ),
                     ),
@@ -197,7 +197,7 @@ class _LoginPageState extends State<LoginPage> {
                     // 切换登录/注册模式
                     TextButton(
                       onPressed: appState.isLoading ? null : _toggleMode,
-                      child: Text(_isLoginMode ? '还没有账号？立即注册' : '已有账号？立即登录'),
+                      child: Text(_isLoginMode ? 'Don\'t have an account? Register' : 'Already have an account? Login'),
                     ),
                   ],
                 ),

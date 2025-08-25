@@ -48,13 +48,13 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('观看历史'),
+        title: const Text('Watch History'),
         centerTitle: true,
         actions: [
           if (histories.isNotEmpty)
             TextButton(
               onPressed: () => _showClearHistoryDialog(),
-              child: const Text('清空', style: TextStyle(color: Colors.red)),
+              child: const Text('Clear', style: TextStyle(color: Colors.red)),
             ),
         ],
       ),
@@ -64,7 +64,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
 
   Widget _buildContent() {
     if (loading) {
-      return const LoadingWidget(message: '加载中...');
+      return const LoadingWidget(message: 'Loading...');
     }
 
     if (errorMessage != null) {
@@ -78,7 +78,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
           children: [
             Icon(Icons.history, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('暂无观看历史', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text('No watch history yet', style: TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
       );
@@ -115,17 +115,17 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
         return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('确认删除'),
-            content: const Text('确定要删除这条观看记录吗？'),
+            title: const Text('Confirm'),
+            content: const Text('Delete this watch history item?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消'),
+                child: const Text('Cancel'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('删除'),
+                child: const Text('Delete'),
               ),
             ],
           ),
@@ -179,7 +179,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    history.drama?.title ?? '未知剧集',
+                    history.drama?.title ?? 'Unknown Drama',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -190,12 +190,12 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
                   const SizedBox(height: 4),
                   if (history.episodeNumber != null)
                     Text(
-                      '观看到第${history.episodeNumber}集',
+                      'Watched Episode ${history.episodeNumber}',
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   const SizedBox(height: 2),
                   Text(
-                    '进度: ${history.formattedProgress}',
+                    'Progress: ${history.formattedProgress}',
                     style: TextStyle(fontSize: 12, color: Colors.blue[600]),
                   ),
                   const SizedBox(height: 2),
@@ -211,9 +211,12 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
             ElevatedButton(
               onPressed: () => _continueWatching(history),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
-              child: const Text('继续观看', style: TextStyle(fontSize: 12)),
+              child: const Text('Continue', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -226,13 +229,13 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
     final difference = now.difference(time);
 
     if (difference.inDays > 0) {
-      return '${difference.inDays}天前';
+      return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
-      return '${difference.inHours}小时前';
+      return '${difference.inHours}h ago';
     } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}分钟前';
+      return '${difference.inMinutes}m ago';
     } else {
-      return '刚刚';
+      return 'Just now';
     }
   }
 
@@ -241,12 +244,12 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认清空'),
-        content: const Text('确定要清空所有观看历史吗？此操作不可恢复。'),
+        title: const Text('Confirm'),
+        content: const Text('Clear all watch history?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -254,7 +257,7 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
               _clearHistory();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('确定'),
+            child: const Text('Clear'),
           ),
         ],
       ),
@@ -272,16 +275,16 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('已清空观看历史')));
+          ).showSnackBar(const SnackBar(content: Text('History cleared')));
         }
       } else {
-        throw Exception('清空失败');
+        throw Exception('History clear failed');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('清空失败: $e')));
+        ).showSnackBar(SnackBar(content: Text('Clear history failed: $e')));
       }
     }
   }
@@ -290,56 +293,54 @@ class _WatchHistoryPageState extends State<WatchHistoryPage> {
   Future<void> _deleteHistoryItem(WatchHistory history) async {
     try {
       final success = await WatchHistoryService.deleteWatchHistory(
-        history.videoId,  // 直接传递String类型的videoId
+        history.videoId, // 直接传递String类型的videoId
       );
       if (success) {
         setState(() {
           histories.remove(history);
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('已删除该记录')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Item deleted')));
         }
       } else {
-        throw Exception('删除失败');
+        throw Exception('Delete failed');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
-    /// 继续观看功能
+  /// 继续观看功能
   void _continueWatching(WatchHistory history) {
     try {
       if (history.dramaId != null) {
         // 如果是剧集，跳转到剧集播放器
         final dramaId = int.parse(history.dramaId!);
         final episodeNumber = history.episodeNumber ?? 1;
-        
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VideoPlayerPage(
-              dramaId: dramaId,
-              startEpisode: episodeNumber,
-            ),
+            builder: (context) =>
+                VideoPlayerPage(dramaId: dramaId, startEpisode: episodeNumber),
           ),
         );
       } else {
         // 如果是单独视频，这里需要根据实际情况处理
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('单独视频播放功能开发中...')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Coming soon...')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法播放：$e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Cannot Play $e')));
     }
   }
 }

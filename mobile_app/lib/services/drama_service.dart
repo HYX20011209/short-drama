@@ -70,7 +70,7 @@ class DramaService {
   /// 获取分类列表
   static Future<List<String>> getCategories() async {
     // TODO: 实现获取分类列表的API
-    return ['都市', '古装', '悬疑', '爱情', '喜剧'];
+    return ['Urban', 'Costume', 'Mystery', 'Romance', 'Comedy'];
   }
 
   /// 搜索剧集
