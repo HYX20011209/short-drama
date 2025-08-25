@@ -24,7 +24,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      throw Exception('网络请求失败: $e');
+      throw Exception('Network request failed: $e');
     }
   }
 
@@ -43,7 +43,7 @@ class UserService {
 
       return response != null && response['code'] == 0;
     } catch (e) {
-      throw Exception('网络请求失败: $e');
+      throw Exception('Network request failed: $e');
     }
   }
 
@@ -61,7 +61,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      throw Exception('获取用户信息失败: $e');
+      throw Exception('Failed to get user info: $e');
     }
   }
 
@@ -105,5 +105,24 @@ class UserService {
       episodeNumber: episodeNumber,
       progress: progress,
     );
+  }
+
+  /// 更新个人信息
+  static Future<bool> updateUserProfile({
+    String? userName,
+    String? userProfile,
+    String? userPassword,
+  }) async {
+    try {
+      final response = await ApiService.updateUserProfile(
+        userName: userName,
+        userProfile: userProfile,
+        userPassword: userPassword,
+      );
+
+      return response != null && response['code'] == 0;
+    } catch (e) {
+      throw Exception('Failed to update profile: $e');
+    }
   }
 }

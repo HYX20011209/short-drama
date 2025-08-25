@@ -93,7 +93,7 @@ class FavoriteDramaCard extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                '${drama.totalEpisodes}集',
+                                '${drama.totalEpisodes} EP',
                                 style: AppTextStyles.withPrimary(
                                   AppTextStyles.labelSmall,
                                 ),
@@ -178,12 +178,12 @@ class FavoriteDramaCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('取消收藏'),
-        content: Text('确定要取消收藏《${drama.title}》吗？'),
+        title: const Text('Remove from Favorites'),
+        content: Text('Remove "${drama.title}" from favorites?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -191,7 +191,7 @@ class FavoriteDramaCard extends StatelessWidget {
               onFavoriteRemove();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('确定'),
+            child: const Text('Confirm'),
           ),
         ],
       ),

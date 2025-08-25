@@ -8,6 +8,7 @@ import '../../theme/app_shadows.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/custom_page_transitions.dart';
 import '../auth/login_page.dart';
+import 'edit_profile_page.dart';
 import 'favorites_page.dart';
 import 'watch_history_page.dart';
 
@@ -118,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage>
         ),
       ),
       title: Text(
-        '我的',
+        'Profile',
         style: AppTextStyles.withPrimary(AppTextStyles.headingSM),
       ),
       centerTitle: true,
@@ -132,9 +133,15 @@ class _ProfilePageState extends State<ProfilePage>
         gradient: appState.isLoggedIn
             ? AppColors.primaryGradient
             : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
-                  AppColors.surfaceWithOpacity(0.9),
-                  AppColors.surfaceWithOpacity(0.7),
+                  Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFFE2E8F0) // Slate-200
+                      : const Color(0xFF334155), // Slate-700
+                  Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFFF1F5F9) // Slate-100
+                      : const Color(0xFF475569), // Slate-600
                 ],
               ),
         borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
@@ -157,7 +164,9 @@ class _ProfilePageState extends State<ProfilePage>
             Container(
               padding: const EdgeInsets.all(AppDimensions.spacingSM),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: appState.isLoggedIn
+                    ? Colors.white.withOpacity(0.2)
+                    : AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
               ),
               child: Icon(
@@ -165,7 +174,7 @@ class _ProfilePageState extends State<ProfilePage>
                     ? Icons.edit_rounded
                     : Icons.arrow_forward_ios_rounded,
                 size: AppDimensions.iconSizeMedium,
-                color: Colors.white,
+                color: appState.isLoggedIn ? Colors.white : AppColors.primary,
               ),
             ),
           ],
@@ -218,18 +227,36 @@ class _ProfilePageState extends State<ProfilePage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          appState.isLoggedIn ? appState.currentUser!.displayName : '未登录用户',
-          style: AppTextStyles.withColor(AppTextStyles.headingXS, Colors.white),
+          appState.isLoggedIn
+              ? appState.currentUser!.displayName
+              : 'Guest User',
+          style: appState.isLoggedIn
+              ? AppTextStyles.withColor(AppTextStyles.headingXS, Colors.white)
+              : AppTextStyles.withColor(
+                  AppTextStyles.headingXS.copyWith(fontWeight: FontWeight.w600),
+                  Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFF1E293B) // Slate-800
+                      : Colors.white,
+                ),
         ),
         const SizedBox(height: AppDimensions.spacingXS),
         Text(
           appState.isLoggedIn
-              ? appState.currentUser!.userProfile ?? '这个人很懒，什么都没留下'
-              : '点击登录享受更多功能',
-          style: AppTextStyles.withColor(
-            AppTextStyles.bodyMedium,
-            Colors.white.withOpacity(0.8),
-          ),
+              ? appState.currentUser!.userProfile ?? 'No bio available'
+              : 'Sign in to enjoy more features',
+          style: appState.isLoggedIn
+              ? AppTextStyles.withColor(
+                  AppTextStyles.bodyMedium,
+                  Colors.white.withOpacity(0.8),
+                )
+              : AppTextStyles.withColor(
+                  AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFF64748B) // Slate-500
+                      : const Color(0xFFCBD5E1), // Slate-300
+                ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -241,35 +268,37 @@ class _ProfilePageState extends State<ProfilePage>
     final menuItems = [
       {
         'icon': Icons.history_rounded,
-        'title': '观看历史',
-        'subtitle': '查看最近观看的剧集',
+        'title': 'Watch History',
+        'subtitle': 'View recently watched dramas',
         'action': () =>
             _navigateToPage(context, appState, const WatchHistoryPage()),
       },
       {
         'icon': Icons.favorite_rounded,
-        'title': '我的收藏',
-        'subtitle': '收藏的精彩剧集',
+        'title': 'My Favorites',
+        'subtitle': 'Your favorite drama collection',
         'action': () =>
             _navigateToPage(context, appState, const FavoritesPage()),
       },
       {
         'icon': Icons.download_rounded,
-        'title': '离线下载',
-        'subtitle': '已下载的剧集',
-        'action': () => _showComingSoon(context, '下载功能开发中...'),
+        'title': 'Downloads',
+        'subtitle': 'Downloaded episodes',
+        'action': () =>
+            _showComingSoon(context, 'Download feature coming soon...'),
       },
       {
         'icon': Icons.settings_rounded,
-        'title': '设置',
-        'subtitle': '应用设置和偏好',
-        'action': () => _showComingSoon(context, '设置功能开发中...'),
+        'title': 'Settings',
+        'subtitle': 'App settings and preferences',
+        'action': () =>
+            _showComingSoon(context, 'Settings feature coming soon...'),
       },
       {
         'icon': Icons.help_outline_rounded,
-        'title': '帮助与反馈',
-        'subtitle': '使用帮助和问题反馈',
-        'action': () => _showComingSoon(context, '帮助功能开发中...'),
+        'title': 'Help & Feedback',
+        'subtitle': 'Get help and send feedback',
+        'action': () => _showComingSoon(context, 'Help feature coming soon...'),
       },
     ];
 
@@ -406,7 +435,7 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               )
             : Text(
-                '登出',
+                'Sign Out',
                 style: AppTextStyles.buttonLarge.copyWith(
                   color: AppColors.error,
                 ),
@@ -434,7 +463,28 @@ class _ProfilePageState extends State<ProfilePage>
     if (!appState.isLoggedIn) {
       Navigator.of(context).pushWithSlideAndFade(const LoginPage());
     } else {
-      _showComingSoon(context, '用户信息编辑功能开发中...');
+      _navigateToEditProfile(context);
+    }
+  }
+
+  /// 导航到编辑个人信息页面
+  Future<void> _navigateToEditProfile(BuildContext context) async {
+    final result = await Navigator.of(
+      context,
+    ).pushWithSlideAndFade(const EditProfilePage());
+
+    // 如果编辑成功，显示成功提示
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Profile updated successfully'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          ),
+        ),
+      );
     }
   }
 
@@ -443,7 +493,7 @@ class _ProfilePageState extends State<ProfilePage>
     if (!appState.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('请先登录'),
+          content: const Text('Please sign in first'),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -466,13 +516,16 @@ class _ProfilePageState extends State<ProfilePage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
         ),
-        title: Text('确认登出', style: AppTextStyles.headingXS),
-        content: Text('确定要登出当前账号吗？', style: AppTextStyles.bodyMedium),
+        title: Text('Confirm Sign Out', style: AppTextStyles.headingXS),
+        content: Text(
+          'Are you sure you want to sign out?',
+          style: AppTextStyles.bodyMedium,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              '取消',
+              'Cancel',
               style: AppTextStyles.withColor(
                 AppTextStyles.buttonMedium,
                 AppColors.primary,
@@ -488,7 +541,7 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
             child: Text(
-              '确定',
+              'Confirm',
               style: AppTextStyles.withColor(
                 AppTextStyles.buttonMedium,
                 Colors.white,
@@ -504,7 +557,7 @@ class _ProfilePageState extends State<ProfilePage>
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('已成功登出'),
+            content: const Text('Successfully signed out'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

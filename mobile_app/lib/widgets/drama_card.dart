@@ -200,7 +200,7 @@ class _DramaCardState extends State<DramaCard>
                   borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
                 ),
                 child: Text(
-                  '${widget.drama.totalEpisodes}集',
+                  '${widget.drama.totalEpisodes} Episodes',
                   style: AppTextStyles.withPrimary(AppTextStyles.labelSmall),
                 ),
               ),
@@ -266,7 +266,7 @@ class _DramaCardState extends State<DramaCard>
             ),
             const SizedBox(height: AppDimensions.spacingXS),
             Text(
-              '短剧',
+              'Drama',
               style: AppTextStyles.withColor(
                 AppTextStyles.labelSmall,
                 AppColors.primary.withOpacity(0.7),

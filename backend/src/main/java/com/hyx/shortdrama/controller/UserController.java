@@ -306,9 +306,33 @@ public class UserController {
         if (userUpdateMyRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        
+        // 验证昵称不能为空
+        if (StringUtils.isBlank(userUpdateMyRequest.getUserName())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "昵称不能为空");
+        }
+        
         User loginUser = userService.getLoginUser(request);
         User user = new User();
         BeanUtils.copyProperties(userUpdateMyRequest, user);
+        
+        // 如果提供了新密码，进行加密处理
+        if (StringUtils.isNotBlank(userUpdateMyRequest.getUserPassword())) {
+            if (userUpdateMyRequest.getUserPassword().length() < 8) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码长度不能少于8位");
+            }
+            String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userUpdateMyRequest.getUserPassword()).getBytes());
+            user.setUserPassword(encryptPassword);
+        } else {
+            // 如果没有提供新密码，则不更新密码字段
+            user.setUserPassword(null);
+        }
+        
+        // 处理个人简介默认值
+        if (StringUtils.isBlank(userUpdateMyRequest.getUserProfile())) {
+            user.setUserProfile("这个人很懒，什么都没留下");
+        }
+        
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

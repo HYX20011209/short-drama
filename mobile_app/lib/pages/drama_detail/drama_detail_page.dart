@@ -20,30 +20,25 @@ class DramaDetailPage extends StatefulWidget {
 
 class _DramaDetailPageState extends State<DramaDetailPage>
     with SingleTickerProviderStateMixin {
-  
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   bool _isFavorite = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    
+
     // 简化动画
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
     _animationController.forward();
   }
@@ -57,9 +52,9 @@ class _DramaDetailPageState extends State<DramaDetailPage>
   void _playEpisode(int episode) {
     try {
       final dramaId = int.parse(widget.drama.id);
-      Navigator.of(context).pushWithScale(
-        VideoPlayerPage(dramaId: dramaId, startEpisode: episode),
-      );
+      Navigator.of(
+        context,
+      ).pushWithScale(VideoPlayerPage(dramaId: dramaId, startEpisode: episode));
     } catch (e) {
       _showSnackBar('无效的剧集ID: ${widget.drama.id}');
     }
@@ -67,20 +62,20 @@ class _DramaDetailPageState extends State<DramaDetailPage>
 
   Future<void> _toggleFavorite() async {
     if (_isLoading) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final result = await FavoriteService.toggleFavorite(widget.drama.id);
       if (result != null) {
         setState(() => _isFavorite = result);
         _showSnackBar(
-          result ? '已添加到收藏' : '已取消收藏',
+          result ? 'Added to Favorites' : 'Removed from Favorites',
           isSuccess: true,
         );
       }
     } catch (e) {
-      _showSnackBar('操作失败: $e');
+      _showSnackBar('Failed: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -88,7 +83,7 @@ class _DramaDetailPageState extends State<DramaDetailPage>
 
   void _showSnackBar(String message, {bool isSuccess = false}) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -106,10 +101,7 @@ class _DramaDetailPageState extends State<DramaDetailPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          '剧集详情',
-          style: AppTextStyles.headingSM,
-        ),
+        title: Text('Drama Info', style: AppTextStyles.headingSM),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -122,16 +114,16 @@ class _DramaDetailPageState extends State<DramaDetailPage>
             children: [
               // 顶部封面
               _buildCoverSection(),
-              
+
               // 基本信息
               _buildInfoSection(),
-              
+
               // 操作按钮
               _buildActionButtons(),
-              
+
               // 选集 - 关键：这里直接紧跟按钮，没有额外间距
               _buildEpisodeSection(),
-              
+
               // 底部间距
               const SizedBox(height: AppDimensions.spacing3XL),
             ],
@@ -155,7 +147,8 @@ class _DramaDetailPageState extends State<DramaDetailPage>
             ],
           ),
         ),
-        child: widget.drama.coverUrl != null && widget.drama.coverUrl!.isNotEmpty
+        child:
+            widget.drama.coverUrl != null && widget.drama.coverUrl!.isNotEmpty
             ? Image.network(
                 widget.drama.coverUrl!,
                 fit: BoxFit.cover,
@@ -183,13 +176,14 @@ class _DramaDetailPageState extends State<DramaDetailPage>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          
+
           const SizedBox(height: AppDimensions.spacingSM),
-          
+
           // 标签和集数
           Row(
             children: [
-              if (widget.drama.category != null && widget.drama.category!.isNotEmpty)
+              if (widget.drama.category != null &&
+                  widget.drama.category!.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppDimensions.spacingMD,
@@ -211,9 +205,9 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                     ),
                   ),
                 ),
-              
+
               const SizedBox(width: AppDimensions.spacingMD),
-              
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.spacingMD,
@@ -223,19 +217,22 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusXS),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withOpacity(0.3),
                   ),
                 ),
                 child: Text(
-                  '共${widget.drama.totalEpisodes}集',
+                  '${widget.drama.totalEpisodes} Episodes',
                   style: AppTextStyles.labelMedium,
                 ),
               ),
             ],
           ),
-          
+
           // 描述
-          if (widget.drama.description != null && widget.drama.description!.isNotEmpty) ...[
+          if (widget.drama.description != null &&
+              widget.drama.description!.isNotEmpty) ...[
             const SizedBox(height: AppDimensions.spacingMD),
             Text(
               widget.drama.description!,
@@ -265,7 +262,9 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  padding: const EdgeInsets.symmetric(vertical: AppDimensions.spacingMD),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppDimensions.spacingMD,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
                   ),
@@ -276,7 +275,7 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                   size: 20,
                 ),
                 label: Text(
-                  '立即播放',
+                  'Watch Now',
                   style: AppTextStyles.withColor(
                     AppTextStyles.buttonMedium,
                     Colors.white,
@@ -285,14 +284,16 @@ class _DramaDetailPageState extends State<DramaDetailPage>
               ),
             ),
           ),
-          
+
           const SizedBox(width: AppDimensions.spacingMD),
-          
+
           // 收藏按钮
           OutlinedButton.icon(
             onPressed: _isLoading ? null : _toggleFavorite,
             style: OutlinedButton.styleFrom(
-              foregroundColor: _isFavorite ? AppColors.error : AppColors.primary,
+              foregroundColor: _isFavorite
+                  ? AppColors.error
+                  : AppColors.primary,
               side: BorderSide(
                 color: _isFavorite ? AppColors.error : AppColors.primary,
               ),
@@ -314,13 +315,13 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                     ),
                   )
                 : Icon(
-                    _isFavorite 
-                        ? Icons.favorite_rounded 
+                    _isFavorite
+                        ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
                     size: 16,
                   ),
             label: Text(
-              _isFavorite ? '已收藏' : '收藏',
+              _isFavorite ? 'Favorited' : 'Favorite',
               style: AppTextStyles.labelMedium,
             ),
           ),
@@ -342,10 +343,10 @@ class _DramaDetailPageState extends State<DramaDetailPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('选集', style: AppTextStyles.headingXS),
-          
+
           // 关键修改：选集标题和按钮之间只有4px间距
           const SizedBox(height: 4.0),
-          
+
           // 选集网格
           GridView.builder(
             shrinkWrap: true,
@@ -367,14 +368,18 @@ class _DramaDetailPageState extends State<DramaDetailPage>
                   child: Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                      borderRadius: BorderRadius.circular(
+                        AppDimensions.radiusMD,
+                      ),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.2),
                       ),
                     ),
                     child: Center(
                       child: Text(
-                        '第$episode集',
+                        'Episode $episode',
                         style: AppTextStyles.labelMedium,
                       ),
                     ),
