@@ -109,3 +109,7 @@ shortdrama:
       videoEpisodes: 30m
       videoFeed: 30s
       dramaSearch: 30s
+ai:
+  service:
+    base-url: "http://127.0.0.1:8088"
+    timeout-ms: 30000

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_text_styles.dart';
+import 'ai/ai_assistant_page.dart';
 import 'home/home_page.dart';
 import 'profile/profile_page.dart';
 import 'recommend/recommend_page.dart';
@@ -86,6 +87,15 @@ class _MainTabPageState extends State<MainTabPage>
           index: _currentIndex,
           children: _pages,
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AiAssistantPage()));
+        },
+        icon: const Icon(Icons.smart_toy_outlined),
+        label: const Text('AI'),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
