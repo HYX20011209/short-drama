@@ -7,6 +7,7 @@ import '../../theme/app_dimensions.dart';
 import '../../theme/app_shadows.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/custom_page_transitions.dart';
+import '../ai/ai_assistant_page.dart';
 import '../player/video_player_page.dart';
 
 class DramaDetailPage extends StatefulWidget {
@@ -105,6 +106,20 @@ class _DramaDetailPageState extends State<DramaDetailPage>
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Ask about this drama',
+            icon: const Icon(Icons.smart_toy_outlined),
+            onPressed: () {
+              Navigator.of(context).pushWithScale(
+                AiAssistantPage(
+                  contextDramaId: widget.drama.id,
+                  contextDramaTitle: widget.drama.title,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
