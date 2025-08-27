@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_text_styles.dart';
+import 'ai/ai_assistant_page.dart';
 import 'home/home_page.dart';
 import 'profile/profile_page.dart';
 import 'recommend/recommend_page.dart';
@@ -19,6 +20,8 @@ class _MainTabPageState extends State<MainTabPage>
   // 新增：为动画提供支持
   int _currentIndex = 0;
   late final List<Widget> _pages;
+  bool _recommendPageLoaded = false;
+  late final ValueNotifier<bool> _recommendActive; // Explore 是否激活
 
   // 新增：动画控制器
   late AnimationController _bottomNavAnimationController;
@@ -27,7 +30,8 @@ class _MainTabPageState extends State<MainTabPage>
   @override
   void initState() {
     super.initState();
-    _pages = const [HomePage(), RecommendPage(), ProfilePage()];
+    _recommendActive = ValueNotifier<bool>(false);
+   _pages = [const HomePage(), const SizedBox.shrink(), const ProfilePage()];
 
     // 初始化底部导航动画
     _bottomNavAnimationController = AnimationController(
@@ -44,13 +48,21 @@ class _MainTabPageState extends State<MainTabPage>
 
   @override
   void dispose() {
+    _recommendActive.dispose();
     _bottomNavAnimationController.dispose();
     super.dispose();
   }
 
   void _onTabTapped(int index) {
     if (index != _currentIndex) {
-      setState(() => _currentIndex = index);
+      setState(() {
+       if (index == 1 && !_recommendPageLoaded) {
+         _pages[1] = RecommendPage(isActiveListenable: _recommendActive);
+         _recommendPageLoaded = true;
+       }
+       _currentIndex = index;
+       _recommendActive.value = (index == 1); // 通知 Explore 是否激活
+     });
 
       // 触发底部导航动画
       _bottomNavAnimationController.reset();
@@ -86,6 +98,15 @@ class _MainTabPageState extends State<MainTabPage>
           index: _currentIndex,
           children: _pages,
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AiAssistantPage()));
+        },
+        icon: const Icon(Icons.smart_toy_outlined),
+        label: const Text('AI'),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

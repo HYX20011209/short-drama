@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../models/drama.dart';
+import '../../services/ai_service.dart';
 import '../../services/drama_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_dimensions.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/constants.dart';
 import '../../widgets/custom_page_transitions.dart';
 import '../../widgets/drama_card.dart';
 import '../../widgets/error_widget.dart';
@@ -28,6 +30,7 @@ class _SearchPageState extends State<SearchPage> {
   bool isLoading = false;
   String? errorMessage;
   bool hasSearched = false;
+  bool useSemantic = false;
 
   // 搜索历史记录（简单的内存存储，后续可改为本地存储）
   List<String> searchHistory = [];
@@ -62,20 +65,37 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final results = await DramaService.searchDramas(query.trim());
-
-      // 添加到搜索历史
-      if (!searchHistory.contains(query.trim())) {
-        searchHistory.insert(0, query.trim());
-        if (searchHistory.length > 10) {
-          searchHistory = searchHistory.take(10).toList();
+      if (useSemantic) {
+        final ai = await AiService.ask(
+          question: query.trim(),
+          scene: 'search',
+          topK: ApiConstants.defaultPageSize,
+        );
+        // 记录历史
+        if (!searchHistory.contains(query.trim())) {
+          searchHistory.insert(0, query.trim());
+          if (searchHistory.length > 10) {
+            searchHistory = searchHistory.take(10).toList();
+          }
         }
+        setState(() {
+          searchResults = ai.dramas;
+          isLoading = false;
+        });
+      } else {
+        final results = await DramaService.searchDramas(query.trim());
+        // 记录历史
+        if (!searchHistory.contains(query.trim())) {
+          searchHistory.insert(0, query.trim());
+          if (searchHistory.length > 10) {
+            searchHistory = searchHistory.take(10).toList();
+          }
+        }
+        setState(() {
+          searchResults = results;
+          isLoading = false;
+        });
       }
-
-      setState(() {
-        searchResults = results;
-        isLoading = false;
-      });
     } catch (e) {
       setState(() {
         isLoading = false;
@@ -107,104 +127,99 @@ class _SearchPageState extends State<SearchPage> {
         horizontal: AppDimensions.spacingLG,
         vertical: AppDimensions.spacingSM,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(
+                      AppDimensions.radiusFull,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  hintText: 'Search dramas...',
-                  hintStyle: AppTextStyles.withColor(
-                    AppTextStyles.bodyMedium,
-                    Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    color: AppColors.primary,
-                    size: AppDimensions.iconSizeLarge,
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(
-                              AppDimensions.radiusFull,
-                            ),
-                            onTap: () {
-                              _searchController.clear();
-                              setState(() {
-                                searchResults.clear();
-                                hasSearched = false;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(
-                                AppDimensions.spacingSM,
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Search dramas...',
+                      hintStyle: AppTextStyles.withColor(
+                        AppTextStyles.bodyMedium,
+                        Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primary,
+                        size: AppDimensions.iconSizeLarge,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(
+                                  AppDimensions.radiusFull,
+                                ),
+                                onTap: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    searchResults.clear();
+                                    hasSearched = false;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                    AppDimensions.spacingSM,
+                                  ),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withOpacity(0.6),
+                                    size: AppDimensions.iconSizeLarge,
+                                  ),
+                                ),
                               ),
-                              child: Icon(
-                                Icons.close_rounded,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withOpacity(0.6),
-                                size: AppDimensions.iconSizeMedium,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.spacingLG,
-                    vertical: AppDimensions.spacingMD,
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.spacingMD,
+                        vertical: AppDimensions.spacingSM,
+                      ),
+                    ),
+                    onSubmitted: _onSearchSubmitted,
                   ),
                 ),
-                style: AppTextStyles.bodyMedium,
-                onSubmitted: _onSearchSubmitted,
-                onChanged: (value) {
-                  setState(() {}); // 更新UI以显示/隐藏清除按钮
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingXS),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text('Semantic', style: AppTextStyles.bodySmall),
+              Switch(
+                value: useSemantic,
+                onChanged: (v) {
+                  setState(() => useSemantic = v);
+                  // 可选：如果已经有关键词，切换时自动触发一次搜索
+                  // if (_searchController.text.trim().isNotEmpty) {
+                  //   _performSearch(_searchController.text.trim());
+                  // }
                 },
               ),
-            ),
-          ),
-          const SizedBox(width: AppDimensions.spacingMD),
-          Container(
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-                onTap: () => _onSearchSubmitted(_searchController.text),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.spacingLG,
-                    vertical: AppDimensions.spacingMD,
-                  ),
-                  child: Text(
-                    'Search',
-                    style: AppTextStyles.withColor(
-                      AppTextStyles.buttonMedium,
-                      Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            ],
           ),
         ],
       ),

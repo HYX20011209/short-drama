@@ -99,7 +99,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   Widget _buildContent() {
     if (loading) {
-      return const LoadingWidget(message: '加载中...');
+      return const LoadingWidget(message: 'loading...');
     }
 
     if (errorMessage != null) {
