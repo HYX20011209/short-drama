@@ -38,6 +38,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     final q = _controller.text.trim();
     if (q.isEmpty || _loading) return;
 
+    // 单次 setState 开始 loading
     setState(() {
       _loading = true;
       _error = null;
@@ -50,14 +51,22 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         topK: 6,
         dramaId: widget.contextDramaId,
       );
+
+      if (!mounted) return;
+
+      // 统一一次性更新所有状态，避免多次 setState 抖动语义树
       setState(() {
         _answer = res.answer;
         _dramas = res.dramas;
+        _loading = false;
       });
     } catch (e) {
-      setState(() => _error = 'Request failed: $e');
-    } finally {
-      setState(() => _loading = false);
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'Request failed: $e';
+        _loading = false;
+      });
     }
   }
 
@@ -108,25 +117,34 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                         style: AppTextStyles.bodyMedium,
                       ),
                     )
-                  : ListView.separated(
-                      itemCount: _dramas.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppDimensions.spacingSM),
-                      itemBuilder: (context, index) {
-                        final d = _dramas[index];
-                        return DramaCard(
-                          drama: d,
-                          onTap: () {
-                            try {
-                              final did = int.parse(d.id);
-                              Navigator.of(
-                                context,
-                              ).pushWithScale(DramaDetailPage(drama: d));
-                            } catch (_) {
-                              Navigator.of(
-                                context,
-                              ).pushWithScale(DramaDetailPage(drama: d));
-                            }
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 依据当前内容宽度动态计算高度（与首页网格视觉接近）
+                        final contentWidth = constraints.maxWidth;
+                        final cardHeight = (contentWidth / 1.6).clamp(
+                          180.0,
+                          300.0,
+                        );
+
+                        return ListView.separated(
+                          padding: EdgeInsets.zero,
+                          itemCount: _dramas.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppDimensions.spacingSM),
+                          itemBuilder: (context, index) {
+                            final d = _dramas[index];
+                            return SizedBox(
+                              height: cardHeight,
+                              child: DramaCard(
+                                key: ValueKey(d.id),
+                                drama: d,
+                                onTap: () {
+                                  Navigator.of(
+                                    context,
+                                  ).pushWithScale(DramaDetailPage(drama: d));
+                                },
+                              ),
+                            );
                           },
                         );
                       },
