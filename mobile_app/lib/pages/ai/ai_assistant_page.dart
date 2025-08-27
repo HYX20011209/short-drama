@@ -280,16 +280,32 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                               const SizedBox(height: AppDimensions.spacingSM),
                           itemBuilder: (context, index) {
                             final d = _dramas[index];
-                            return SizedBox(
-                              height: cardHeight,
-                              child: DramaCard(
-                                key: ValueKey(d.id),
-                                drama: d,
-                                onTap: () {
-                                  Navigator.of(
-                                    context,
-                                  ).pushWithScale(DramaDetailPage(drama: d));
-                                },
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(
+                                milliseconds: 250 + index * 40,
+                              ),
+                              builder: (context, v, child) {
+                                return Opacity(
+                                  opacity: v,
+                                  child: Transform.translate(
+                                    offset: Offset(0, (1 - v) * 12),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: SizedBox(
+                                height:
+                                    cardHeight, // 使用上方 LayoutBuilder 计算得到的高度
+                                child: DramaCard(
+                                  key: ValueKey(d.id),
+                                  drama: d,
+                                  onTap: () {
+                                    Navigator.of(
+                                      context,
+                                    ).pushWithScale(DramaDetailPage(drama: d));
+                                  },
+                                ),
                               ),
                             );
                           },
