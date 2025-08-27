@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/ai_result.dart';
 import '../../models/drama.dart';
@@ -28,20 +31,91 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   List<Drama> _dramas = [];
   String? _error;
 
+  // 打字机状态
+  Timer? _typeTimer;
+  Timer? _cursorTimer;
+  String _answerFull = '';
+  String _typingText = '';
+  int _typed = 0;
+  bool _cursorVisible = true;
+
+  bool get _isTyping => _typeTimer != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _cursorTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (!mounted) return;
+      setState(() => _cursorVisible = !_cursorVisible);
+    });
+  }
+
   @override
   void dispose() {
+    _typeTimer?.cancel();
+    _cursorTimer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _stopTypewriter() {
+    _typeTimer?.cancel();
+    _typeTimer = null;
+  }
+
+  void _startTypewriter(String text) {
+    _stopTypewriter();
+    _answerFull = text;
+    _typingText = '';
+    _typed = 0;
+
+    final len = text.length;
+    final step = len > 400 ? 2 : 1; // 长文本更快
+    final intervalMs = len > 400 ? 10 : 18; // 间隔更短
+
+    _typeTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
+      if (!mounted) return;
+      if (_typed >= len) {
+        t.cancel();
+        _typeTimer = null;
+        setState(() {}); // 收尾刷新（隐藏 Skip）
+        return;
+      }
+      final next = (_typed + step).clamp(0, len);
+      setState(() {
+        _typingText = _answerFull.substring(0, next);
+        _typed = next;
+      });
+    });
+  }
+
+  void _skipTyping() {
+    _stopTypewriter();
+    setState(() {
+      _typingText = _answerFull;
+    });
+  }
+
+  Future<void> _copyAnswer() async {
+    final text = _answerFull.isNotEmpty ? _answerFull : _typingText;
+    if (text.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
   Future<void> _send() async {
     final q = _controller.text.trim();
     if (q.isEmpty || _loading) return;
 
-    // 单次 setState 开始 loading
     setState(() {
       _loading = true;
       _error = null;
+      _answerFull = '';
+      _typingText = '';
+      _typed = 0;
     });
 
     try {
@@ -54,20 +128,96 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
       if (!mounted) return;
 
-      // 统一一次性更新所有状态，避免多次 setState 抖动语义树
+      // 回答启动打字效果；卡片结果一次性渲染
+      _startTypewriter(res.answer);
       setState(() {
-        _answer = res.answer;
         _dramas = res.dramas;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _error = 'Request failed: $e';
         _loading = false;
       });
     }
+  }
+
+  Widget _buildAnswer() {
+    final showHint =
+        _answerFull.isEmpty &&
+        _typingText.isEmpty &&
+        !_loading &&
+        _error == null;
+    final content = _typingText.isNotEmpty ? _typingText : _answerFull;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: Container(
+        key: ValueKey(content.isEmpty && !showHint),
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppDimensions.spacingLG),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: showHint
+            ? Text(
+                'Ask for recommendations or plot details...',
+                style: AppTextStyles.bodyMedium,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 打字机 + 闪烁光标
+                  Wrap(
+                    children: [
+                      Text(content, style: AppTextStyles.bodyLarge),
+                      if (_isTyping)
+                        AnimatedOpacity(
+                          opacity: _cursorVisible ? 1 : 0,
+                          duration: const Duration(milliseconds: 250),
+                          child: Text(
+                            ' ▍',
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppDimensions.spacingSM),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _copyAnswer,
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        label: const Text('Copy'),
+                      ),
+                      const SizedBox(width: AppDimensions.spacingXS),
+                      if (_isTyping)
+                        TextButton.icon(
+                          onPressed: _skipTyping,
+                          icon: const Icon(
+                            Icons.fast_forward_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Skip'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
+    );
   }
 
   @override
@@ -101,11 +251,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                   ),
                 ),
               ),
-            if (_answer != null && _answer!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: AppDimensions.spacingMD),
-                child: Text(_answer!, style: AppTextStyles.bodyLarge),
-              ),
+            _buildAnswer(),
+            const SizedBox(height: AppDimensions.spacingMD),
             const SizedBox(height: AppDimensions.spacingMD),
             Expanded(
               child: _dramas.isEmpty
