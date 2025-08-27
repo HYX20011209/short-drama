@@ -1,12 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+from contextlib import asynccontextmanager
 
 from .config import settings
 from .models import AskRequest, AskResponse, DramaHit
 from .retriever import get_index_store
 from .llm import generate_answer
 
-app = FastAPI(title="Short Drama AI Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        _ = get_index_store()
+        logging.getLogger("uvicorn").info("AI index/model preloaded.")
+        yield
+    except Exception as e:
+        logging.getLogger("uvicorn").warning(f"AI preloaded failed: {e}")
+
+app = FastAPI(title="Short Drama AI Service", version="1.0.0", lifespan=lifespan)
 
 # Allow local dev calls from anywhere; tighten in prod if needed
 app.add_middleware(

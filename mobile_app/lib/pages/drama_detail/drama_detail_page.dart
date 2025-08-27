@@ -357,7 +357,7 @@ class _DramaDetailPageState extends State<DramaDetailPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('选集', style: AppTextStyles.headingXS),
+          Text('Episodes', style: AppTextStyles.headingXS),
 
           // 关键修改：选集标题和按钮之间只有4px间距
           const SizedBox(height: 4.0),

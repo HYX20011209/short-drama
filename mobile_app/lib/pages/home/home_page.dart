@@ -208,7 +208,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: SlideTransition(
         position: _slideAnimation,
         child: Container(
-          height: AppDimensions.spacing4XL + AppDimensions.spacingLG,
+          height: AppDimensions.buttonHeightMedium,
           margin: const EdgeInsets.symmetric(vertical: AppDimensions.spacingSM),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -236,7 +236,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppDimensions.spacingXL,
-                        vertical: AppDimensions.spacingMD,
+                        vertical: AppDimensions.spacingSM,
                       ),
                       decoration: BoxDecoration(
                         gradient: isSelected ? AppColors.primaryGradient : null,
@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                       child: Text(
                         category,
-                        style: isSelected
+                        style: (isSelected
                             ? AppTextStyles.withColor(
                                 AppTextStyles.labelLarge,
                                 Colors.white,
@@ -266,7 +266,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             : AppTextStyles.withColor(
                                 AppTextStyles.labelLarge,
                                 AppColors.primary,
-                              ),
+                              ))
+                              .copyWith(height: 1.2),
                       ),
                     ),
                   ),
@@ -281,7 +282,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildContent() {
     if (loading) {
-      return const LoadingWidget(message: '加载中...');
+      return const LoadingWidget(message: 'loading...');
     }
 
     if (errorMessage != null) {
