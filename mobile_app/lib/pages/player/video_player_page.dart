@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -16,9 +17,14 @@ import '../../theme/app_text_styles.dart';
 class VideoPlayerPage extends StatefulWidget {
   final int? dramaId; // 可选的剧集ID
   final int? startEpisode; // 起始集数
+  final ValueListenable<bool>? isActiveListenable; // 可选：页面可见性
 
-  const VideoPlayerPage({Key? key, this.dramaId, this.startEpisode})
-    : super(key: key);
+  const VideoPlayerPage({
+    Key? key,
+    this.dramaId,
+    this.startEpisode,
+    this.isActiveListenable,
+  }) : super(key: key);
 
   @override
   State<VideoPlayerPage> createState() => _VideoPlayerPageState();
@@ -34,6 +40,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   final int _pageSize = 10;
   bool _loading = false;
   bool _hasMore = true;
+  bool _isActive = true; // 是否处于可见/激活状态
+  ValueListenable<bool>? _activeListenable;
+  VoidCallback? _activeListener;
 
   // ==================== 播放控制常量 ====================
   // 播放速度相关
@@ -89,6 +98,34 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   @override
   void initState() {
     super.initState();
+    _isActive = widget.isActiveListenable?.value ?? true;
+    _activeListenable = widget.isActiveListenable;
+    if (_activeListenable != null) {
+      _activeListener = () {
+        final active = _activeListenable!.value;
+        if (active == _isActive) return;
+        setState(() => _isActive = active);
+        if (!active) {
+          // 变为不可见：暂停所有视频
+          for (final c in _controllers.values) {
+            if (c.value.isPlaying) c.pause();
+          }
+        } else {
+          // 变为可见：若当前视频非用户主动暂停，则恢复播放
+          if (_items.isNotEmpty && _currentIndex < _items.length) {
+            final key = _items[_currentIndex].id;
+            final c = _controllers[key];
+            if (c != null &&
+                c.value.isInitialized &&
+                !_userPausedVideos.contains(key) &&
+                !c.value.isPlaying) {
+              c.play();
+            }
+          }
+        }
+      };
+      _activeListenable!.addListener(_activeListener!);
+    }
     _loadMore().then((_) {
       // 根据入口参数定位初始页
       int initialIndex = 0;
@@ -203,6 +240,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     // 等待视频初始化完成
     int attempts = 0;
 
+    if (!_isActive) return; // 不可见时不等待也不自动播放
     while (attempts < _maxInitAttempts) {
       final c = _controllers[videoId];
       if (c != null && c.value.isInitialized) {
@@ -213,7 +251,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           _applyDesiredSpeed(videoId);
           // 初始化完成后优先尝试从后台进度恢复
           final item = _items[_currentIndex];
-          await _resumeFromLastPosition(item: item, controller: c);
+          if (_isActive) {
+            await _resumeFromLastPosition(item: item, controller: c);
+          }
           setState(() {});
         }
         return;
@@ -252,7 +292,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     if (wasUserPaused) setState(() {});
 
     final c = _controllers[key];
-    if (c != null && c.value.isInitialized) {
+    if (!_isActive) {
+      // 不可见时不做自动播放（保留初始化与预加载）
+    } else if (c != null && c.value.isInitialized) {
       _applyDesiredSpeed(key); // 应用期望速度
 
       // 尝试从上次观看位置开始播放
@@ -269,6 +311,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   @override
   void dispose() {
+    if (_activeListener != null) {
+      _activeListenable?.removeListener(_activeListener!);
+    }
     _progressTimer?.cancel(); // 取消定时器
     _saveCurrentProgress(); // 保存当前进度
     for (final c in _controllers.values) {
@@ -609,7 +654,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       final appState = context.read<AppState>();
       if (!appState.isLoggedIn) {
         // 未登录直接播放
-        controller.play();
+        if (_isActive) controller.play();
         return;
       }
 
@@ -642,10 +687,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         }
       }
 
-      controller.play();
+      if (_isActive) controller.play();
     } catch (e) {
       print('恢复播放进度失败: $e');
-      controller.play(); // 失败时正常播放
+      if (_isActive) controller.play(); // 失败时正常播放
     }
   }
 

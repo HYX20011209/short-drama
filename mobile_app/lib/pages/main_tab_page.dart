@@ -20,6 +20,8 @@ class _MainTabPageState extends State<MainTabPage>
   // 新增：为动画提供支持
   int _currentIndex = 0;
   late final List<Widget> _pages;
+  bool _recommendPageLoaded = false;
+  late final ValueNotifier<bool> _recommendActive; // Explore 是否激活
 
   // 新增：动画控制器
   late AnimationController _bottomNavAnimationController;
@@ -28,7 +30,8 @@ class _MainTabPageState extends State<MainTabPage>
   @override
   void initState() {
     super.initState();
-    _pages = const [HomePage(), RecommendPage(), ProfilePage()];
+    _recommendActive = ValueNotifier<bool>(false);
+   _pages = [const HomePage(), const SizedBox.shrink(), const ProfilePage()];
 
     // 初始化底部导航动画
     _bottomNavAnimationController = AnimationController(
@@ -45,13 +48,21 @@ class _MainTabPageState extends State<MainTabPage>
 
   @override
   void dispose() {
+    _recommendActive.dispose();
     _bottomNavAnimationController.dispose();
     super.dispose();
   }
 
   void _onTabTapped(int index) {
     if (index != _currentIndex) {
-      setState(() => _currentIndex = index);
+      setState(() {
+       if (index == 1 && !_recommendPageLoaded) {
+         _pages[1] = RecommendPage(isActiveListenable: _recommendActive);
+         _recommendPageLoaded = true;
+       }
+       _currentIndex = index;
+       _recommendActive.value = (index == 1); // 通知 Explore 是否激活
+     });
 
       // 触发底部导航动画
       _bottomNavAnimationController.reset();
