@@ -1,12 +1,14 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 from .config import settings
+from .llm import generate_answer
 from .models import AskRequest, AskResponse, DramaHit
 from .retriever import get_index_store
-from .llm import generate_answer
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,24 +51,27 @@ def rag_ask(req: AskRequest):
 
     store = get_index_store()
 
-    # 1) Vector search
-    hits = store.search(req.question, topk=max(topk * 3, topk))  # over-fetch for better dedup
-
-    # 2) Scene handling
     if scene == "qa" and req.dramaId:
-        # Filter results to the given dramaId
+        # 段落级检索 + 限定当前剧
+        hits = store.search(req.question, topk=max(topk * 3, topk))
         hits = store.filter_hits_by_drama(hits, req.dramaId)
         if not hits:
-            # If no vector hits for given drama, fallback to generic search (no filter)
             hits = store.search(req.question, topk=max(topk * 2, topk))
+        items = store.hits_to_drama(hits, dedup_by_drama=True, limit=topk)
+    else:
+        # search / recommend 使用剧目级混合检索（向量 + tags + category 加权）
+        items = get_index_store().drama_level_hybrid(
+            query=req.question,
+            vec_topk=max(topk * 5, 50),
+            final_topk=topk,
+            alpha=0.8,
+            min_tag_hits=1
+        )
 
-    # 3) Convert to drama-level results (dedup by drama)
-    items = store.hits_to_drama(hits, dedup_by_drama=True, limit=topk)
-
-    # 4) Build answer (template / LLM)
+    #  Build answer (template / LLM)
     answer = generate_answer(req.question, items, scene=scene, drama_id=req.dramaId)
 
-    # 5) Map to response
+    # Map to response
     resp_items = [
         DramaHit(
             dramaId=int(it["dramaId"]),

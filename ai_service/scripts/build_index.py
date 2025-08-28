@@ -11,18 +11,19 @@ Outputs:
 - <out_dir>/stats.json
 """
 
-import os
-import re
+import argparse
 import json
 import math
+import os
+import re
 import time
-import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
 
 try:
@@ -30,8 +31,8 @@ try:
 except Exception as e:
     raise RuntimeError("FAISS is required. Please install faiss-cpu.") from e
 
-from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 
 # -----------------------------
 # Utilities
@@ -217,6 +218,48 @@ def write_stats(stats_path: Path, stats: Dict) -> None:
     with stats_path.open("w", encoding="utf-8") as f:
         json.dump(stats, f, ensure_ascii=False, indent=2)
 
+def extract_tags_for_items(texts: List[str], topk:int=8) -> List[List[str]]:
+    vec = TfidfVectorizer(
+        max_features=5000,
+        ngram_range=(1,2),
+        stop_words="english"
+    )
+    X = vec.fit_transform(texts)
+    vocab = np.array(vec.get_feature_names_out())
+    tags_list: List[List[str]] = []
+    for i in range(X.shape[0]):
+        row = X.getrow(i)
+        if row.nnz == 0:
+            tags_list.append([])
+            continue
+        idxs = np.argsort(row.toarray()[0])[-topk:]
+        tags = [vocab[j] for j in idxs if len(vocab[j]) > 2]
+        tags_list.append(tags)
+    return tags_list
+
+def build_drama_level(df: pd.DataFrame, model: SentenceTransformer, out_dir: Path) -> None:
+    print("[DramaIndex] building drama-level index...")
+    texts = [(f"{r['title']}. {r.get('description','') or ''}").strip() for _, r in df.iterrows()]
+    tags_list = extract_tags_for_items(texts, topk=8)
+    embs = model.encode(texts, batch_size=64, show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True).astype("float32")
+
+    dim = embs.shape[1]
+    index = faiss.IndexFlatIP(dim)
+    index.add(embs)
+    faiss.write_index(index, str(out_dir / "drama.faiss"))
+
+    meta_path = out_dir / "drama_meta.jsonl"
+    with meta_path.open("w", encoding="utf-8") as f:
+        for i, (_, r) in enumerate(df.iterrows()):
+            rec = {
+                "dramaId": int(r["id"]) if str(r["id"]).isdigit() else r["id"],
+                "title": r["title"],
+                "category": r.get("category","") or "",
+                "tags": tags_list[i],
+            }
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    print("[DramaIndex] saved faiss + metadata.")
+
 # -----------------------------
 # CLI
 # -----------------------------
@@ -297,6 +340,9 @@ def main():
     }
     save_metadata(meta_path, corpus, extra)
     print(f"[Meta] Metadata written to: {meta_path}")
+
+    # Build drama-level index + metadata (per-drama, with tags)
+    build_drama_level(df=df, model=model, out_dir=out_dir)
 
     elapsed = time.time() - t0
     stats = {
