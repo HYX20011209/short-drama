@@ -1,5 +1,14 @@
+# env
 .env
 .env.example
-/index/
-/__pycache__/
+
+# virtual envs
 /venv/
+
+# index
+/index/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
