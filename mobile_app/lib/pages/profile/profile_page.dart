@@ -280,13 +280,13 @@ class _ProfilePageState extends State<ProfilePage>
         'action': () =>
             _navigateToPage(context, appState, const FavoritesPage()),
       },
-      {
-        'icon': Icons.download_rounded,
-        'title': 'Downloads',
-        'subtitle': 'Downloaded episodes',
-        'action': () =>
-            _showComingSoon(context, 'Download feature coming soon...'),
-      },
+      // {
+      //   'icon': Icons.download_rounded,
+      //   'title': 'Downloads',
+      //   'subtitle': 'Downloaded episodes',
+      //   'action': () =>
+      //       _showComingSoon(context, 'Download feature coming soon...'),
+      // },
       {
         'icon': Icons.settings_rounded,
         'title': 'Settings',

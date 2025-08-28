@@ -8,8 +8,8 @@ class ApiConstants {
       return 'http://10.0.2.2:8101/api';
     } else {
       // iOS模拟器和其他平台
-      return 'http://127.0.0.1:8101/api';
-      // return 'http://172.20.10.14:8101/api';
+      // return 'http://127.0.0.1:8101/api';
+      return 'http://172.20.10.14:8101/api';
     }
   }
 
