@@ -5,21 +5,23 @@
 ### 目录结构
 
 short-drama/
+
 backend/ # Java Spring Boot 后端
+
 ai_service/ # Python FastAPI + FAISS AI 检索服务
+
 mobile_app/ # Flutter 客户端
 
 
 ### 技术栈
-- 后端：Spring Boot、MyBatis-Plus、Redis（可选）、Elasticsearch（可选）、MySQL
+- 后端：Spring Boot、MyBatis-Plus、Redis（可选）、MySQL
 - AI 服务：FastAPI、FAISS、sentence-transformers
 - 客户端：Flutter 3.8+
 
 ### 快速开始（本机）
 1) 初始化数据库
 ```bash
-mysql -h 127.0.0.1 -u root -p < backend/sql/create_table.sql
-mysql -h 127.0.0.1 -u root -p < backend/sql/upgrade_drama_schema.sql
+init_full.sql
 ```
 
 2) 启动 AI 服务（默认读取 `ai_service/index` 索引）
@@ -28,14 +30,10 @@ cd ai_service
 python3 -m venv venv && source venv/bin/activate
 pip install -U pip && pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8088
-# 健康检查：curl http://127.0.0.1:8088/healthz
 ```
 
 3) 启动后端（确保已配置数据库与 AI 服务地址）
 ```bash
-cd backend
-./mvnw package -DskipTests
-java -jar target/backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 # 后端地址：http://127.0.0.1:8101/api
 ```
 
